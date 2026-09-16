@@ -1,0 +1,144 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>PROTOTYPE — gooey stack spread (throwaway)</title>
+<!--
+  PROTOTYPE, wipe me. Throwaway per prototype skill (UI branch, sub-shape B).
+  Question: does a gooey metaball spread suit a SERIOUS AI video house?
+    Variant goo   = SVG goo filter ON during flight (bridges stretch, then snap)
+    Variant clean = identical choreography, no goo (restraint control)
+  Shared: stack of 12 blobs (showreel + 11 projects, ONE riso accent per brand rule)
+  holds center → spreads to a tidy grid → lands crisp (circles morph to rounded rects,
+  goo removed at settle). Brand palette 02-COLOUR on Paper Cream.
+  Run: double-click (or python http.server). ?variant=goo|clean deep-links.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900&display=swap" rel="stylesheet">
+<style>
+  html,body{margin:0;height:100%;background:#F0E3D1;color:#0A1F38;overflow:hidden;
+    font-family:"Archivo","Helvetica Neue",Helvetica,Arial,sans-serif}
+  .display{font-family:"Pangram Sans Rounded","Pilcrow",ui-rounded,"SF Pro Rounded",system-ui,sans-serif}
+  #stage{position:fixed;inset:0}
+  .eyebrow{position:absolute;left:50%;top:8%;transform:translateX(-50%);font-weight:700;
+    font-size:13px;letter-spacing:.28em;color:#A93B1B;text-transform:uppercase;white-space:nowrap}
+  h1{position:absolute;left:50%;top:11%;transform:translateX(-50%);margin:0;font-weight:800;
+    font-size:min(6vw,54px);letter-spacing:.02em;color:#0E438E;white-space:nowrap}
+  #goo-field{position:absolute;inset:0}
+  #goo-field.goo{filter:url(#goo)}
+  .blob{position:absolute;width:96px;height:96px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;color:#F0E3D1;
+    font-weight:700;font-size:14px;transition:border-radius .45s cubic-bezier(0.23,1,0.32,1)}
+  .blob.landed{border-radius:14px}
+  .blob.show{width:150px;height:150px;background:#0E438E;z-index:5}
+  .blob.p{background:#2E6BB8}
+  .blob.ink{background:#0A1F38}
+  .blob.riso{background:#E8552B}
+  #bar{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);display:flex;gap:10px;align-items:center;
+    background:#0A1F38;color:#F0E3D1;border-radius:999px;padding:8px 14px;font-size:13px;z-index:50;
+    box-shadow:0 8px 30px rgba(10,31,56,.35)}
+  #bar button{border:1px solid #2E6BB8;background:transparent;color:#F0E3D1;border-radius:999px;
+    padding:4px 12px;cursor:pointer;font-size:13px}
+  #bar input{accent-color:#E8552B}
+  #state{position:fixed;left:12px;top:10px;font:12px/1.6 ui-monospace,monospace;color:#0A1F38;
+    background:rgba(240,227,209,.8);padding:8px 10px;border-radius:8px;z-index:50;white-space:pre}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <filter id="goo" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur id="goo-blur" in="SourceGraphic" stdDeviation="12" result="blur"/>
+      <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -9" result="goo"/>
+      <feComposite in="SourceGraphic" in2="goo" operator="atop"/>
+    </filter>
+  </defs>
+</svg>
+<div id="stage">
+  <div class="eyebrow stretch">Selected Work</div>
+  <h1 class="display">wawe films</h1>
+  <div id="goo-field"></div>
+</div>
+<div id="state">boot…</div>
+<div id="bar">
+  <button id="prev">◀</button>
+  <span id="vlabel"></span>
+  <button id="next">▶</button>
+  <label>goo <input id="gooamt" type="range" min="4" max="20" value="12"></label>
+  <button id="replay">replay</button>
+</div>
+<script>
+const qs = new URLSearchParams(location.search);
+const VARIANTS = ['goo', 'clean'];
+let variant = VARIANTS.includes(qs.get('variant')) ? qs.get('variant') : 'goo';
+const field = document.getElementById('goo-field'), stateEl = document.getElementById('state');
+const vlabel = document.getElementById('vlabel'), blurEl = document.getElementById('goo-blur');
+const VNAMES = { goo: 'goo · metaball spread', clean: 'clean · no-goo control' };
+const EASE = 'cubic-bezier(0.23, 1, 0.32, 1)';   // emil-design-eng strong ease-out for entrances
+
+// 12 items: showreel + 11 projects, ONE riso accent (brand rule: one detail per screen)
+const ITEMS = [{ t: 'SHOW', c: 'show' },
+  ...Array.from({ length: 11 }, (_, i) => ({ t: 'P' + String(i + 1).padStart(2, '0'), c: i === 4 ? 'riso' : (i % 3 === 2 ? 'ink' : 'p') }))];
+
+const CX = () => innerWidth / 2, CY = () => innerHeight * 0.58;
+function slots() {
+  const cols = 4, gw = 150, gh = 120, out = [];
+  const x0 = CX() - (cols - 1) * gw / 2, y0 = CY() - gh / 2;
+  ITEMS.forEach((_, i) => out.push([x0 + (i % cols) * gw, y0 + Math.floor(i / cols) * gh]));
+  return out;
+}
+
+let t0 = performance.now(), landed = false, phase = 'stack';
+function frame(now) {
+  const t = (now - t0) / 1000;
+  phase = t < 0.9 ? 'stack (hold)' : (!landed ? 'spread (goo bridges)' : 'grid (crisp landing)');
+  stateEl.textContent = `variant ${variant} · phase: ${phase}\nt=${t.toFixed(2)}s · goo=${blurEl.getAttribute('stdDeviation')}px · items: 12 (1 riso accent)`;
+  requestAnimationFrame(frame);
+}
+
+function build() {
+  field.innerHTML = '';
+  field.classList.toggle('goo', variant === 'goo');
+  landed = false;
+  const sl = slots();
+  ITEMS.forEach((it, i) => {
+    const d = document.createElement('div');
+    d.className = 'blob ' + it.c; d.textContent = it.t;
+    d.style.transform = `translate(${CX() - (it.c === 'show' ? 75 : 48)}px, ${CY() - (it.c === 'show' ? 75 : 48)}px)`;
+    d.style.left = '0'; d.style.top = '0';
+    field.appendChild(d);
+    const [sx, sy] = sl[i];
+    const delay = 900 + i * 45;   // stagger 45ms (emil 30–80 band)
+    setTimeout(() => {
+      d.animate([{ transform: d.style.transform },
+        { transform: `translate(${sx - (it.c === 'show' ? 75 : 48)}px, ${sy - (it.c === 'show' ? 75 : 48)}px)` }],
+        { duration: 750, easing: EASE, fill: 'forwards' });
+      d.style.transform = `translate(${sx - (it.c === 'show' ? 75 : 48)}px, ${sy - (it.c === 'show' ? 75 : 48)}px)`;
+      setTimeout(() => { d.classList.add('landed'); }, 650);
+      if (i === ITEMS.length - 1) setTimeout(() => { landed = true; if (variant === 'goo') field.classList.remove('goo'); }, 750);
+    }, delay);
+  });
+}
+
+function setVariant(v) {
+  variant = v; qs.set('variant', v);
+  history.replaceState(null, '', location.pathname + '?' + qs);
+  vlabel.textContent = VNAMES[variant];
+  t0 = performance.now(); build();
+}
+document.getElementById('prev').onclick = () => setVariant(variant === 'goo' ? 'clean' : 'goo');
+document.getElementById('next').onclick = () => setVariant(variant === 'goo' ? 'clean' : 'goo');
+document.getElementById('replay').onclick = () => { t0 = performance.now(); build(); };
+document.getElementById('gooamt').oninput = e => blurEl.setAttribute('stdDeviation', e.target.value);
+addEventListener('keydown', e => {
+  if (/INPUT|TEXTAREA/.test(document.activeElement?.tagName || '')) return;
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') setVariant(variant === 'goo' ? 'clean' : 'goo');
+});
+
+document.querySelector('.eyebrow').style.fontStretch = '87.5%';
+setVariant(variant);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

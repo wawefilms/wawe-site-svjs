@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+/* WAWE design tokens — code-first source of truth (see docs/design-system.md).
+   Brand palette sampled from the logo artwork (see palette board 02-COLOUR).
+   Only five inks + paper exist; tints are color-mix overprints, never new hues. */
+@theme {
+  --color-paper: #f0e3d1;      /* Paper Cream — default page background. Never #FFF */
+  --color-wawe: #0e438e;       /* Wawe Blue — brand: sections, buttons, links, headlines */
+  --color-ink: #0a1f38;        /* Ink Navy — body copy. Never pure black */
+  --color-wash: #2e6bb8;       /* Wash Blue — hovers, dividers, secondary UI, sparingly */
+  --color-riso: #e8552b;       /* Riso Orange — one detail per screen. Fills only, never text */
+
+  /* WCAG companions (same hues, accessibility-grade depths — see ADR-0003) */
+  --color-wash-ink: #275c9e;   /* text/links on paper, 5.3:1 AA */
+  --color-riso-ember: #a93b1b; /* eyebrows/small text on paper, 5.0:1 AA */
+
+  /* Overprint tints (decorative only, never text) */
+  --color-wash-mist: color-mix(in srgb, var(--color-wash) 16%, var(--color-paper));
+  --color-wawe-mist: color-mix(in srgb, var(--color-wawe) 12%, var(--color-paper));
+
+  /* Type: display rounded (Pangram Sans Rounded — trial now, license before launch),
+     body/UI Archivo SemiCondensed (Google Fonts variable, font-stretch: 87.5%) */
+  --font-display: "Pangram Sans Rounded", "Pilcrow", ui-rounded, "SF Pro Rounded", system-ui, sans-serif;
+  --font-sans: "Archivo", "Helvetica Neue", Helvetica, Arial, sans-serif;
+
+  /* Motion: constant sweeps stay linear; easing curves are an open item (intro prototype). */
+  --ease-sweep: linear;
+}
+
+/* Archivo SemiCondensed: MS SemiCondensed = 87.5% width on the variable wdth axis */
+.stretch-semi {
+  font-stretch: 87.5%;
+}

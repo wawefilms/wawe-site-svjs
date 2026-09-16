@@ -1,0 +1,326 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>PROTOTYPE — intro wave wash (throwaway)</title>
+<!--
+  PROTOTYPE, wipe me. Throwaway per prototype skill (UI branch, sub-shape B).
+  Question: which wave tech sells the wash/recede illusion better?
+    Variant A = DOM character wave, laid out with Pretext.js measurement (fallback: canvas measureText)
+    Variant B = Canvas ASCII wave (grid of glyphs, no DOM)
+  Shared timeline (answers already grilled): title → wash L→R → trailing-edge reveal L→R
+    → auto cascade of 20 project cards to bottom scroll-strip, showreel stays center.
+  Run: double-click this file (or `python3 -m http.server` + open it). ?variant=A|B deep-links.
+  Compare, pick a winner (or steal bits), then this file moves to a throwaway branch — never main.
+-->
+<style>
+  html,body{margin:0;height:100%;background:#000;color:#fff;overflow:hidden;
+    font-family:Inter,"Helvetica Neue",Helvetica,Arial,sans-serif}
+  #stage{position:fixed;inset:0;overflow:hidden;background:radial-gradient(120% 90% at 50% 20%,#06101f 0%,#01030a 60%,#000 100%)}
+  #title{position:absolute;left:50%;top:34%;transform:translate(-50%,-50%);
+    font-size:min(11vw,120px);font-weight:700;letter-spacing:.12em;white-space:nowrap;margin:0}
+  /* ---- shared card stack / showreel / strip ---- */
+  #cards{position:absolute;inset:0}
+  .card{position:absolute;left:50%;top:46%;width:120px;height:68px;border-radius:8px;transform:translate(-50%,-50%);
+    display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;
+    border:1px solid rgba(140,180,255,.35);box-shadow:none} /* no shadow: 20× stacked shadows compound into a halo */
+  .proj{background:linear-gradient(135deg,#12233f,#1d3a6b)}
+  #showreel{position:absolute;left:50%;top:46%;width:340px;height:190px;transform:translate(-50%,-50%) scale(.36);
+    border-radius:12px;background:linear-gradient(135deg,#0e2a5a,#3b82f6);
+    border:2px solid rgba(180,210,255,.7);display:flex;align-items:center;justify-content:center;
+    font-weight:800;letter-spacing:.2em;box-shadow:0 12px 60px rgba(59,130,246,.35)}
+  #showreel::after{content:"▶";font-size:42px;margin-left:8px;opacity:.9}
+  #strip{position:absolute;left:0;right:0;bottom:0;padding:12px 16px 20px;
+    display:flex;gap:10px;overflow-x:auto;background:linear-gradient(transparent,rgba(0,0,10,.85));
+    opacity:0;transition:opacity .6s}
+  #strip.on{opacity:1}
+  #strip .thumb{flex:0 0 150px;height:84px;border-radius:8px;background:linear-gradient(135deg,#13263f,#274b85);
+    border:1px solid rgba(140,180,255,.3);display:flex;align-items:center;justify-content:center;
+    font-size:12px;font-weight:600}
+  /* ---- Variant A: DOM wave band ---- */
+  #waveA{position:absolute;top:0;bottom:0;width:46vw;pointer-events:none;overflow:visible}
+  #waveA span{position:absolute;font-family:ui-monospace,Menlo,Consolas,monospace;
+    animation:bob 1.1s ease-in-out infinite alternate}
+  @keyframes bob{from{translate:0 -6px}to{translate:0 6px}}
+  /* ---- Variant B: canvas wave ---- */
+  #waveB{position:absolute;inset:0;width:100%;height:100%}
+  /* ---- prototype chrome ---- */
+  #bar{position:fixed;left:50%;bottom:76px;transform:translateX(-50%);display:flex;gap:10px;align-items:center;
+    background:#f5f5f5;color:#111;border-radius:999px;padding:8px 14px;font-size:13px;
+    box-shadow:0 8px 30px rgba(0,0,0,.5);z-index:50}
+  #bar button{border:1px solid #999;background:#fff;border-radius:999px;padding:4px 12px;cursor:pointer;font-size:13px}
+  #state{position:fixed;left:12px;top:10px;font:12px/1.6 ui-monospace,monospace;color:#9db4e8;
+    background:rgba(5,10,25,.7);padding:8px 10px;border-radius:8px;z-index:50;white-space:pre}
+</style>
+</head>
+<body>
+<div id="stage">
+  <h1 id="title">wawe films</h1>
+  <canvas id="waveB" hidden></canvas>
+  <div id="waveA" hidden></div>
+  <div id="cards"></div>
+  <div id="showreel">SHOWREEL</div>
+  <div id="strip"></div>
+</div>
+<div id="state">boot…</div>
+<div id="bar">
+  <button id="prev">◀</button>
+  <span id="vlabel"></span>
+  <button id="next">▶</button>
+  <button id="replay">replay</button>
+</div>
+<script type="module">
+const qs = new URLSearchParams(location.search);
+const VARIANTS = ['D', 'E'];
+let variant = VARIANTS.includes(qs.get('variant')) ? qs.get('variant') : 'D';
+const DIR = qs.get('dir') || 'BTT';   // travel direction: 'BTT' (bottom→top) or 'LTR' (left→right)
+const BTT = DIR === 'BTT';
+const stage = document.getElementById('stage'), title = document.getElementById('title');
+const waveA = document.getElementById('waveA'), waveB = document.getElementById('waveB');
+const cardsEl = document.getElementById('cards'), showreel = document.getElementById('showreel');
+const strip = document.getElementById('strip'), stateEl = document.getElementById('state');
+const vlabel = document.getElementById('vlabel');
+const bctx = waveB.getContext('2d');
+
+// ---- timeline (shared, grilled decisions) ----
+const T = { titleHold: 1.4, sweep: 2.4, exit: 1.6, cascade: 1.6 }; // seconds per-wave phases
+let t0 = performance.now(), cascaded = false, measurer = '…', titleH = 0;
+let titleGone = false, revealed = false, fadeStart = 0; // wash → flash reset → withdraw right
+let beat = { kind: 'wash' };   // current beat: wash | flash | recede
+let trailPct = 0;   // uncovering edge: title-wipe front, then the withdrawing waterline
+
+// ---- measurer: Pretext.js if CDN reachable, else canvas fallback ----
+let pretext = null;
+try { pretext = await import('https://esm.sh/@chenglou/pretext@0.2.0'); measurer = 'pretext'; }
+catch { measurer = 'fallback(canvas measureText)'; }
+{ // measure the title block reflow-free to size the wave band (rows cover the title)
+  const font = getComputedStyle(title).font;
+  if (pretext) {
+    try {
+      const p = await pretext.prepare('wawe films', font);
+      titleH = pretext.layout(p, innerWidth * 0.9).height || 120;
+    } catch { titleH = 120; measurer += ' (layout failed, default height)'; }
+  } else {
+    const c = document.createElement('canvas').getContext('2d');
+    c.font = font; titleH = c.measureText('wawe films').actualBoundingBoxAscent * 2 || 120;
+  }
+}
+
+// ---- build stack: 20 project cards + showreel (all start center) ----
+const N = 20, projs = [];
+for (let i = 0; i < N; i++) {
+  const d = document.createElement('div');
+  d.className = 'card proj'; d.textContent = 'P' + String(i + 1).padStart(2, '0');
+  d.style.zIndex = i; cardsEl.appendChild(d); projs.push(d);
+}
+
+
+const RAMP = ' .·:;+*oO0@█';
+function hash2(x, y, s) { const h = Math.sin(x * 127.1 + y * 311.7 + s * 74.7) * 43758.5453; return h - Math.floor(h); }
+// ---- Shore-break renderer (Variants D/E): the essence of a wave ----
+// From the drone reference: (1) crest lip = dense high-contrast leading edge,
+// (2) lacy edge = layered undulation, never straight, (3) texture gradient =
+// dense crest → dissipating lace → calm, (4) churn = foam flicker while advancing,
+// (5) sets = staggered parallel breakers. Foam → blue, sea → site white.
+// ---- Shore-break renderer (Variants D/E): travelling waves, all L→R ----
+// Corrected plan: every wave enters left, exits right, stays coherent on screen.
+// The recede is a closing SET of new waves, also L→R; reveal happens behind
+// the last wave's trailing edge. Nothing dissolves in place, nothing moves R→L.
+// ---- Shore-break renderer (Variants D/E): wash → foam-flash reset → withdraw right ----
+// Agreed plan: waves arrive from the left, but drain to the right (sea switches sides).
+// Wash uses a tight set; a foam flash resets to full flood; the waterline then
+// withdraws L→R with foam lace riding it, revealing the stack behind it.
+function drawShore(cfg, states, beat) {
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  if (waveB.width !== innerWidth * dpr) { waveB.width = innerWidth * dpr; waveB.height = innerHeight * dpr; }
+  bctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  bctx.fillStyle = '#f2f6fb'; bctx.fillRect(0, 0, innerWidth, innerHeight);
+  const S = BTT ? innerHeight : innerWidth;   // travel size
+  const C = BTT ? innerWidth : innerHeight;   // cross size
+  const cellT = 12, cellC = 18, tt = Math.floor(t * 9);
+  const bandT = S * cfg.band;
+  bctx.font = '16px ui-monospace,Menlo,monospace'; bctx.textBaseline = 'middle';
+  const ink = v => v < 0.3 ? '#c3d7f4' : v < 0.55 ? '#6f9de6' : v < 0.8 ? '#2b5fc7' : '#14337f';
+  const glyph = v => RAMP[Math.floor(v * (RAMP.length - 1))];
+  const P = (tp, cp, w) => BTT ? [cp + w, tp] : [tp, cp + w];   // (travel, cross) → canvas x, y
+  const HN = (tp, cp, s) => hash2(Math.round(tp / cellT), Math.round(cp / cellC), s);
+  const und = (c, ph) => cfg.amp[0] * Math.sin(c * 0.008 + t * 1.6 + ph)
+    + cfg.amp[1] * Math.sin(c * 0.021 - t * 2.4 + ph * 1.7) + cfg.amp[2] * Math.sin(c * 0.05 + t * 4.0);
+  // one travelling band; foam trails behind the front (LTR: tp<edge, BTT: tp>edge)
+  const drawBand = (st, b, alpha) => {
+    bctx.globalAlpha = alpha;
+    const trail = cfg.trail * (1 + st.drain * 0.9);
+    for (let c = 0; c < C; c += cellC) {
+      const edge = st.front + und(c, b.ph);
+      const lo = BTT ? edge : edge - bandT * trail;
+      const hi = BTT ? edge + bandT * trail : edge;
+      for (let tp = lo; tp < hi; tp += cellT) {
+        if (tp < 0 || tp > S) continue;
+        const d = BTT ? (tp - edge) / (bandT * trail) : (tp - lo) / (bandT * trail);
+        const n = HN(tp, c, tt);
+        if (n > cfg.lace0 + d * cfg.lace1 + st.drain * 0.6) continue;
+        const v = Math.min(1, (d * 0.85 + n * 0.35) * b.gain * (1 - st.drain * 0.6));
+        const [x, y] = P(tp, c, (n - 0.5) * 8);
+        bctx.fillStyle = ink(v);
+        bctx.fillText(glyph(v), x, y);
+      }
+    }
+    bctx.globalAlpha = 1;
+  };
+  const entered = st => st && (BTT ? st.front < S * 1.55 : st.front > -S * 0.55);
+  if (beat.kind === 'wash') {
+  { // punch a hole so the unwashed title shows through (matches its clip-path wipe)
+    const r = title.getBoundingClientRect();
+    if (!titleGone) {
+      if (!BTT) { const hx0 = Math.max(r.left, states[0].front); if (hx0 < r.right) bctx.clearRect(hx0, r.top, r.right - hx0, r.height); }
+      else { const hy0 = Math.min(r.bottom, states[0].front); if (hy0 > r.top) bctx.clearRect(r.left, r.top, r.width, hy0 - r.top); }
+    }
+  }
+  let bi = 0;
+  for (const b of cfg.bands) { const st = states[bi++]; if (entered(st)) drawBand(st, b, 1); }
+  // flood fills in behind the set: wash ends fully covered, recede starts seamlessly
+  {
+    const st = states[states.length - 1];
+    const trail = cfg.trail * (1 + st.drain * 0.9);
+    const fe = BTT ? st.front + bandT * trail : st.front - bandT * trail;
+    for (let c = 0; c < C; c += cellC) {
+      const tA = BTT ? Math.max(fe, 0) : 0, tB = BTT ? S : Math.min(fe, S);
+      for (let tp = tA; tp < tB; tp += cellT) {
+        const n = HN(tp, c, tt + 3);
+        if (n > 0.10) continue;   // sparse body texture
+        const [x, y] = P(tp, c, (n - 0.5) * 6);
+        bctx.fillStyle = ink(n * 0.5);
+        bctx.fillText(glyph(n * 0.5), x, y);
+      }
+    }
+  }
+  return;
+  }
+  // recede: flood withdraws along travel; foam lace rides the waterline
+  { // crossfade: wash bands slide off while the waterline builds (hides the beat cut)
+    const xa = clamp(1 - (t - beat.t0) / 0.45, 0, 1);
+    if (xa > 0) { let bi2 = 0; for (const b of cfg.bands) { const st2 = states[bi2++]; if (entered(st2)) drawBand(st2, b, xa); } }
+  }
+  if (beat.fade >= 1) return;   // wiped to calm sea: no water cells at all
+  for (let c = 0; c < C; c += cellC) {
+    const line = beat.Rx + und(c, 0);
+    const tA = BTT ? 0 : Math.max(line, 0), tB = BTT ? Math.min(line, S) : S;   // water: tp>line (LTR) / tp<line (BTT)
+    for (let tp = tA; tp < tB; tp += cellT) {
+      const depth = BTT ? (line - tp) / (S * 0.22) : (tp - line) / (S * 0.22);
+      const n = HN(tp, c, tt);
+      if (n > (1 - depth * 0.85) * 0.9 + 0.08 + (beat.fade || 0)) continue;   // dense lip, sparse body, fades to calm
+      const v = Math.min(1, (1 - depth * 0.7) * 0.8 + n * 0.3);
+      const [x, y] = P(tp, c, (n - 0.5) * 8);
+      bctx.fillStyle = ink(v);
+      bctx.fillText(glyph(v), x, y);
+    }
+  }
+}
+const SHORE = {
+  D: { band: 0.22, trail: 2.6, amp: [70, 38, 16], lace0: 0.10, lace1: 0.95,   // two monumental walls
+       bands: [{ ph: 0, gain: 1 }, { ph: 2.4, gain: 0.8 }],
+       y0: () => 0, y1: () => innerHeight },
+  E: { band: 0.07, trail: 2.0, amp: [52, 28, 12], lace0: 0.12, lace1: 0.90,   // three sequential breakers
+       bands: [{ ph: 0, gain: 1 }, { ph: 2.1, gain: 0.85 }, { ph: 4.2, gain: 0.7 }],
+       y0: () => 0, y1: () => innerHeight },
+};
+const SETS = { D: [1.4, 2.0], E: [1.4, 1.75, 2.1] };   // tight sets: walls/breakers stay close together
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+function waveFront(t, spawn) {   // one wave's journey: enter left → cover → slip off right
+  const W = BTT ? innerHeight : innerWidth, lt = t - spawn;   // W = travel size
+  if (lt < 0) return -0.6 * W;
+  if (lt <= T.sweep) return -0.5 * W + (lt / T.sweep) * 1.55 * W;   // → 1.05W
+  const u = Math.min(1, (lt - T.sweep) / T.exit);
+  return 1.05 * W + u * 0.75 * W;                                  // → 1.80W
+}
+
+// ---- cascade: FLIP 20 cards center → strip, showreel scales up ----
+function cascade() {
+  if (cascaded) return; cascaded = true;
+  showreel.animate([{ transform: 'translate(-50%,-50%) scale(.36)' },
+    { transform: 'translate(-50%,-50%) scale(1)' }], { duration: 900, easing: 'cubic-bezier(.2,.7,.2,1)', fill: 'forwards' });
+  strip.classList.add('on');
+  projs.forEach((el, i) => {
+    const th = document.createElement('div');
+    th.className = 'thumb'; th.textContent = 'P' + String(i + 1).padStart(2, '0');
+    strip.appendChild(th);
+    const r1 = el.getBoundingClientRect(), r2 = th.getBoundingClientRect();
+    // keep card flying from center: animate a clone, hide original
+    const fly = el.cloneNode(true);
+    Object.assign(fly.style, { position: 'fixed', left: r1.left + 'px', top: r1.top + 'px', margin: 0, zIndex: 40 });
+    document.body.appendChild(fly);
+    el.style.visibility = 'hidden';
+    fly.animate([{ transform: 'translate(0,0) scale(1)', opacity: 1 },
+      { transform: `translate(${r2.left + r2.width / 2 - (r1.left + r1.width / 2)}px,${r2.top + r2.height / 2 - (r1.top + r1.height / 2)}px) scale(.9)`, opacity: 1 }],
+      { duration: 700, delay: i * 45, easing: 'cubic-bezier(.2,.7,.2,1)', fill: 'forwards' })
+      .onfinish = () => fly.remove();
+  });
+}
+
+// ---- main loop ----
+let t = 0;
+function frame(now) {
+  t = (now - t0) / 1000;
+  const W = innerWidth, H = innerHeight, S = BTT ? H : W;   // S = travel size
+  const spawns = SETS[variant];
+  const states = spawns.map(s => {
+    const base = waveFront(t, s);
+    const f = BTT ? S - base : base;   // BTT mirrors: enter bottom (1.5S) → exit top (-0.8S)
+    return { front: f, drain: BTT ? clamp(-f / (0.45 * S), 0, 1) : clamp((f - S) / (0.45 * S), 0, 1) };
+  });
+  if (!titleGone && (BTT ? states[0].front <= 0 : states[0].front >= S)) titleGone = true;
+  const cfg = SHORE[variant];
+  const last = states[states.length - 1];
+  if (beat.kind === 'wash' && (BTT ? last.front <= 0 : last.front >= S)) beat = { kind: 'recede', t0: t };
+  if (beat.kind === 'recede') {
+    const ru = Math.min(1, (t - beat.t0) / 2.4);
+    beat.Rx = BTT ? S + 0.35 * S - ru * 1.5 * S : -0.35 * S + ru * 1.5 * S;   // off-screen entry, linear
+    trailPct = clamp(BTT ? (1 - beat.Rx / S) * 100 : beat.Rx / S * 100, 0, 100);
+    if (trailPct >= 100 && !revealed) { revealed = true; fadeStart = t; }
+  }
+  const fade = revealed ? Math.min(1, (t - fadeStart) / 0.8) : 0;
+  const frontPct0 = clamp(states[0].front / W * 100, 0, 100);
+  let phase = 'title';
+  if (t <= T.titleHold) phase = 'title';
+  else if (beat.kind === 'wash') phase = `wash [${DIR}] (set covers title, flood fills behind)`;
+  else if (!revealed) phase = `recede [${DIR}] (flood withdraws, stack shows behind waterline)`;
+  else phase = cascaded ? 'filmstrip (scroll strip, showreel center)' : 'cascade (cards fly to strip)';
+  if (titleGone) title.style.opacity = 0;   // latched: title stays washed away
+  else { title.style.clipPath = t < T.titleHold ? 'none' : (BTT ? `inset(0 0 ${Math.max(0, H - states[0].front)}px 0)` : `inset(0 0 0 ${frontPct0}%)`); title.style.opacity = 1; }
+  cardsEl.style.opacity = showreel.style.opacity = trailPct > 0 ? 1 : 0;   // hidden until waterline uncovers
+  cardsEl.style.clipPath = showreel.style.clipPath = BTT ? `inset(${Math.max(0, beat.Rx || 0)}px 0 0 0)` : `inset(0 ${100 - trailPct}% 0 0)`;
+  if (revealed) cascade();
+  waveA.hidden = true; waveB.hidden = false;
+  beat.fade = fade;   // post-reveal wipe: clears waterline residue to calm sea
+  drawShore(cfg, states, beat);
+  stateEl.textContent = `variant ${variant} · phase: ${phase}\nbeat=${beat.kind} trail=${trailPct.toFixed(0)}% fade=${fade.toFixed(2)}${revealed ? ' · revealed' : ''}`;
+  requestAnimationFrame(frame);
+}
+
+const VNAMES = { D: 'D · Twin walls (close)', E: 'E · Tight set (3 close)' };
+function step(d) { setVariant(VARIANTS[(VARIANTS.indexOf(variant) + d + VARIANTS.length) % VARIANTS.length]); }
+function setVariant(v) {
+  variant = v; qs.set('variant', v);
+  history.replaceState(null, '', location.pathname + '?' + qs);
+  vlabel.textContent = VNAMES[variant];
+  waveA.hidden = true; // A/B/C removed — D/E only
+  stage.style.background = '#f2f6fb'; // inverted palette: blue foam on site-white sea
+  title.style.color = '#0b1e4b';
+  strip.style.background = 'linear-gradient(transparent,rgba(255,255,255,.92))';
+  stateEl.style.color = '#274b85';
+  stateEl.style.background = 'rgba(255,255,255,.7)';
+}
+document.getElementById('prev').onclick = () => step(-1);
+document.getElementById('next').onclick = () => step(1);
+addEventListener('keydown', e => {
+  if (/INPUT|TEXTAREA/.test(document.activeElement?.tagName || '')) return;
+  if (e.key === 'ArrowLeft') step(-1);
+  if (e.key === 'ArrowRight') step(1);
+});
+document.getElementById('replay').onclick = () => location.reload();
+
+setVariant(variant);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
