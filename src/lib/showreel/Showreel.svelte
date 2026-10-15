@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 
+import { monitorHeroVideo } from '$lib/intro/gate';
 	let {
 		projects = [],
 		videoUrls = [] as string[]
@@ -100,6 +101,8 @@
 			} catch {}
 			return u;
 		});
+		// Intro gate: the hero preload doubles as the wash-away readiness signal (see $lib/intro/gate).
+		if (proxiedUrls.length > 0) monitorHeroVideo(proxiedUrls[0]);
 
 		// Simple video-frame atlas (sequential, same as before but now for the Viscose ring)
 		const CELL_W = 512;

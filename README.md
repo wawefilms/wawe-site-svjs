@@ -1,42 +1,44 @@
-# sv
+# WAWE Films — SvelteKit site
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+Svelte 5 / SvelteKit 2 portfolio backed by Payload CMS. The homepage includes the accepted opening, surge, recede and liquid perspective-stack experience; Projects, filtering and client content remain part of the site.
 
-## Creating a project
-
-If you're seeing this, you've probably already done this step. Congrats!
+## Local development
 
 ```sh
-# create a new project
-npx sv create my-app
+pnpm install --frozen-lockfile
+cp .env.example .env # only if you do not already have local configuration
+pnpm dev
 ```
 
-To recreate this project with the same configuration:
+Set `PAYLOAD_API_URL` to your CMS and `R2_PUBLIC_URL` to its trusted public media origin. For the public CMS these are `https://cms.wawefilms.com` and `https://media.wawefilms.com`. Do not commit secrets or overwrite an existing `.env`.
+
+Node is pinned to `24.20.0` in `.node-version`; pnpm is pinned to `10.34.6` in `package.json`.
+
+## Homepage package
+
+- `src/lib/landing/`: production-owned browser rendering, motion, media loading, approved opening settings and bundled assets/attribution. No production imports from the prototype folders.
+- `src/routes/+page.svelte`: homepage integration alongside the existing Project filters/grid and client content.
+- `src/routes/+page.server.ts`: server-loaded Payload content. The Showreel remains independent from Project ordering.
+- `src/routes/api/landing-media/+server.ts`: allowlisted, same-origin streaming media delivery for the landing canvas/WebGL. Trusted origins and paths are defined in `src/lib/landing/sources.ts`; this is not an arbitrary URL proxy.
+- `prototypes/ascii-stacking/`: retained comparison/tuning study, not a production entry point.
+
+**Development controls only:** bottom padding, spread speed and replay. Production uses the accepted defaults and does not expose the study panel. Bottom padding defaults to matching the side gutter. Rightward spreading defaults to 0.75 seconds; initial stacking speed is independent.
+
+The local `/showreel-mock.webm` is placeholder fallback content. Confirm the final CMS Showreel and media/font rights before launch.
+
+## Check and build
 
 ```sh
-# recreate this project
-pnpm dlx sv@0.17.0 create --template minimal --types ts --install pnpm wawe-site-svjs
+pnpm check
+pnpm test:landing
+pnpm build
+pnpm preview
 ```
 
-## Developing
+The development server is not a production deployment. The site targets Cloudflare Workers with Static Assets using `@sveltejs/adapter-cloudflare` and `wrangler.jsonc`. See **[Workers GitHub setup](docs/cloudflare-workers.md)** for build/deploy settings, runtime secrets and local Workers testing. `pnpm build:workers` runs the release gates; `pnpm check:workers` bundles a dry run without deploying.
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+## Release
 
-```sh
-npm run dev
+See **[production-readiness checklist](docs/production-readiness.md)** for verification results, environment variables, content/licensing checks, browser/accessibility/performance sign-off, staging and rollback. No deployment is implied by packaging the homepage.
 
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
-
-## Building
-
-To create a production version of your app:
-
-```sh
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+Additional context: [design system](docs/design-system.md), [domain glossary](CONTEXT.md), [stacking study](prototypes/ascii-stacking/README.md).

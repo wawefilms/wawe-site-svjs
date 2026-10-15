@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>WAWE — working foundation</title>
+    <link rel="stylesheet" href="/src/app.css" />
+    <style>
+      /* Specimen-only layout. Palette and font families come from src/app.css. */
+      :root { color-scheme: light; }
+      html { background: var(--color-paper); color: var(--color-ink); }
+      body { margin: 0; font-family: var(--font-sans); line-height: 1.5; }
+      a { color: inherit; text-underline-offset: .25em; }
+      a:focus-visible { outline: 3px solid var(--color-wawe); outline-offset: 5px; }
+      .shell { max-width: 1440px; margin-inline: auto; padding: 24px clamp(20px, 5vw, 80px) 48px; }
+      header, .section-heading, footer { display: flex; justify-content: space-between; align-items: baseline; gap: 20px; }
+      header { padding-bottom: 24px; border-bottom: 1px solid var(--color-wawe); }
+      .wordmark { font-family: var(--font-display); font-weight: 800; font-size: 32px; color: var(--color-wawe); line-height: 1; }
+      .meta { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+      .status { display: flex; align-items: center; gap: 10px; }
+      .status::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--color-riso); flex: none; }
+      .intro { padding-block: clamp(40px, 7vw, 100px) 48px; }
+      h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(52px, 8vw, 112px); letter-spacing: -.035em; line-height: .95; color: var(--color-wawe); margin: 0 0 28px; }
+      .intro p { max-width: 570px; font-size: 18px; margin: 0; text-wrap: pretty; }
+      section { padding-block: 28px 48px; border-top: 1px solid var(--color-wawe); }
+      .section-heading { margin-bottom: 24px; }
+      h2, h3, p { margin-top: 0; }
+      h2 { font-size: 14px; font-weight: 600; margin-bottom: 0; }
+      .section-heading p { font-size: 13px; margin-bottom: 0; }
+      .palette { display: grid; grid-template-columns: 2fr 2fr 1fr 1fr 1fr; gap: 12px; }
+      .swatch { min-width: 0; }
+      .chip { height: clamp(100px, 15vw, 200px); background: var(--swatch); border: 1px solid var(--color-ink); }
+      .swatch h3 { margin: 12px 0 2px; font-size: 14px; }
+      .value { font: 12px/1.5 ui-monospace, monospace; }
+      .role { font-size: 12px; margin: 6px 0 0; }
+      .companions { margin-top: 24px; display: flex; flex-wrap: wrap; gap: 12px 32px; font-size: 14px; }
+      .companions p { margin: 0; }
+      .type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+      .type-label { font-size: 12px; margin-bottom: 16px; }
+      .display-sample { font-family: var(--font-display); font-weight: 700; color: var(--color-wawe); font-size: clamp(48px, 6vw, 84px); line-height: 1; letter-spacing: -.025em; }
+      .archivo-sample { font-size: clamp(32px, 4.5vw, 64px); line-height: 1; font-weight: 600; color: var(--color-wawe); }
+      .body-sample { max-width: 44ch; font-size: 16px; }
+      .sample-stage { background: var(--color-wawe); color: var(--color-paper); min-height: 300px; padding: clamp(24px, 6vw, 72px); display: grid; align-content: center; justify-items: center; gap: 28px; overflow: hidden; }
+      .sample-stage p { font-size: clamp(38px, 7vw, 100px); font-weight: 600; line-height: 1; margin: 0; white-space: nowrap; }
+      pre { margin: 0; font: clamp(9px, 1.3vw, 17px)/1.35 ui-monospace, monospace; white-space: pre; }
+      .caption { font-size: 13px; margin: 14px 0 0; max-width: 68ch; }
+      .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+      .control { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 10px 22px; border: 1px solid var(--color-wawe); font-size: 14px; text-decoration: none; }
+      .primary { color: var(--color-paper); background: var(--color-wawe); }
+      .secondary { color: var(--color-wawe); }
+      .control:active { background: var(--color-ink); color: var(--color-paper); }
+      @media (hover: hover) and (pointer: fine) { .control:hover { background: var(--color-ink); color: var(--color-paper); } }
+      .notes { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+      .notes h3 { color: var(--color-wawe); font-weight: 600; font-size: 18px; }
+      .notes p { max-width: 48ch; margin-bottom: 0; }
+      footer { font-size: 12px; border-top: 1px solid var(--color-wawe); padding-top: 20px; }
+      footer a { display: inline-flex; align-items: center; min-height: 44px; }
+      @media (max-width: 640px) {
+        header, .section-heading, footer { flex-wrap: wrap; gap: 10px; }
+        .palette { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .palette .swatch:last-child { grid-column: 1 / -1; }
+        .palette .swatch:last-child .chip { height: 56px; }
+        .type-grid, .notes { grid-template-columns: 1fr; gap: 28px; }
+        .sample-stage { min-height: 240px; padding-inline: 12px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell" id="top">
+      <header>
+        <span class="wordmark">wawe</span>
+        <span class="meta status">Working foundation / 01</span>
+      </header>
+      <main>
+        <div class="intro">
+          <h1>Room for<br />the work.</h1>
+          <p>Existing colour. Existing type. A starting point for layout and motion—not a finished identity. Brand personality comes later.</p>
+        </div>
+        <section aria-labelledby="palette-heading" id="palette">
+          <div class="section-heading">
+            <h2 id="palette-heading">01 / Colour foundation</h2>
+            <p>Live site tokens. Proportions are illustrative.</p>
+          </div>
+          <div class="palette">
+            <article class="swatch" data-token="paper" style="--swatch: var(--color-paper)"><div class="chip" aria-hidden="true"></div><h3>Paper</h3><span class="value"></span><p class="role">Default canvas</p></article>
+            <article class="swatch" data-token="wawe" style="--swatch: var(--color-wawe)"><div class="chip" aria-hidden="true"></div><h3>Wawe</h3><span class="value"></span><p class="role">Brand blue</p></article>
+            <article class="swatch" data-token="ink" style="--swatch: var(--color-ink)"><div class="chip" aria-hidden="true"></div><h3>Ink</h3><span class="value"></span><p class="role">Reading colour</p></article>
+            <article class="swatch" data-token="wash" style="--swatch: var(--color-wash)"><div class="chip" aria-hidden="true"></div><h3>Wash</h3><span class="value"></span><p class="role">Secondary graphics</p></article>
+            <article class="swatch" data-token="riso" style="--swatch: var(--color-riso)"><div class="chip" aria-hidden="true"></div><h3>Riso</h3><span class="value"></span><p class="role">Sparse accents</p></article>
+          </div>
+          <div class="companions">
+            <p style="color: var(--color-wash-ink)">Wash Ink / blue text on paper</p>
+            <p style="color: var(--color-riso-ember)">Riso Ember / orange text on paper</p>
+          </div>
+        </section>
+        <section aria-labelledby="type-heading">
+          <div class="section-heading"><h2 id="type-heading">02 / Type foundation</h2><p>Self-hosted. Hierarchy remains provisional.</p></div>
+          <div class="type-grid">
+            <div><p class="type-label">Pilcrow Rounded / display / 700</p><p class="display-sample">A moving<br />image.</p><p class="body-sample">The existing rounded display face. Keep it available without deciding the whole site's personality around it.</p></div>
+            <div><p class="type-label">Archivo / SemiCondensed / 600</p><p class="archivo-sample stretch-semi">WAWE FILMS</p><p class="body-sample stretch-semi">Archivo carries the intro title, reading text and functional labels. This is a type specimen, not final portfolio copy.</p><p class="meta stretch-semi">Selected work &nbsp; / &nbsp; Showreel &nbsp; / &nbsp; Contact</p></div>
+          </div>
+        </section>
+        <section aria-labelledby="surface-heading" id="surface">
+          <div class="section-heading"><h2 id="surface-heading">03 / Reversed surface</h2><p>Colour + title + character texture</p></div>
+          <div class="sample-stage">
+            <pre aria-hidden="true">       ~ ~       . .        ~ ~       . .
+  . .       ~ ~       . .        ~ ~
+       ~ ~       . .        ~ ~       . .</pre>
+            <p class="stretch-semi">WAWE FILMS</p>
+            <pre aria-hidden="true">  . .       ~ ~       . .        ~ ~
+       ~ ~       . .        ~ ~       . .
+  . .       ~ ~       . .        ~ ~</pre>
+          </div>
+          <p class="caption">Static material sample only—not the intro composition or a wave simulation. Direction, density, stage shape and movement are still open.</p>
+        </section>
+        <section aria-labelledby="ui-heading">
+          <div class="section-heading"><h2 id="ui-heading">04 / Basic UI</h2><p>Tab to inspect focus. Links navigate this board.</p></div>
+          <div class="controls"><a class="control primary" href="#surface">View surface sample <span aria-hidden="true">&nbsp;↗</span></a><a class="control secondary" href="#palette">View palette</a></div>
+        </section>
+        <section aria-labelledby="scope-heading">
+          <div class="section-heading"><h2 id="scope-heading">05 / Leave room to decide</h2></div>
+          <div class="notes"><div><h3>Keep moving.</h3><p>Use the existing palette and fonts to get the layout and animation nearly right. Nothing here changes the production site or implements the intro.</p></div><div><h3>Return to the brand.</h3><p>Personality, final hierarchy, texture and precise proportions stay open. The current intro brief—not older prototypes—governs the animation.</p></div></div>
+        </section>
+      </main>
+      <footer><span>WAWE / provisional site foundation</span><a href="#top">Back to top ↑</a></footer>
+    </div>
+    <script type="module">
+      const tokens = getComputedStyle(document.documentElement);
+      for (const swatch of document.querySelectorAll('[data-token]')) {
+        swatch.querySelector('.value').textContent = tokens.getPropertyValue(`--color-${swatch.dataset.token}`).trim().toUpperCase();
+      }
+    </script>
+  </body>
+</html>

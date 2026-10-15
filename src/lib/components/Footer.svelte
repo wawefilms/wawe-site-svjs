@@ -1,9 +1,14 @@
-<script lang="ts">
-</script>
-
-<footer
-	class="shrink-0 border-t border-neutral-200 bg-white px-6 py-8 text-sm text-neutral-500"
-	style="padding-bottom: calc(2rem + env(safe-area-inset-bottom))"
->
-	<p>© {new Date().getFullYear()} WAWE Films · All rights reserved.</p>
+<footer>
+	<div class="site-container footer-inner">
+		<p>© {new Date().getFullYear()} WAWE Films · All rights reserved.</p>
+		<nav aria-label="Footer navigation"><a href="/?view=all#projects">Projects</a><a href="/contact">Contact</a></nav>
+	</div>
 </footer>
+
+<style>
+	footer { flex-shrink: 0; background: var(--color-midnight); color: var(--color-surface-muted); border-top: 1px solid color-mix(in srgb, var(--color-paper) 20%, transparent); padding-block: 1.5rem calc(1.5rem + env(safe-area-inset-bottom)); font-size: .875rem; }
+	.footer-inner { display: flex; align-items: center; justify-content: space-between; gap: 1rem 2rem; flex-wrap: wrap; }
+	nav { display: flex; gap: 1.5rem; }
+	a { display: inline-flex; align-items: center; min-height: 44px; }
+	@media (hover: hover) { a:hover { color: var(--color-paper); text-decoration: underline; } }
+</style>

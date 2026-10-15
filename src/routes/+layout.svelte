@@ -2,9 +2,9 @@
 	import '../app.css';
 	import { setContext } from 'svelte';
 	import { onNavigate } from '$app/navigation';
+	import { page } from '$app/state';
 	import Nav from '$lib/components/Nav.svelte';
 	import Footer from '$lib/components/Footer.svelte';
-	import Intro from '$lib/components/Intro.svelte';
 
 	let { children } = $props();
 
@@ -19,7 +19,7 @@
 	setContext('intro', intro);
 
 	onNavigate((navigation) => {
-		if (!document.startViewTransition) return;
+		if (!document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 		return new Promise((resolve) => {
 			// @ts-ignore
 			document.startViewTransition(async () => {
@@ -31,28 +31,18 @@
 </script>
 
 <svelte:head>
-	<title>WAWE Films</title>
-	<meta name="description" content="WAWE Films — Video portfolio" />
-	<meta property="og:type" content="website" />
-	<meta property="og:site_name" content="WAWE Films" />
-	<meta property="og:url" content="https://wawefilms.com" />
-	<meta property="og:title" content="WAWE Films" />
-	<meta property="og:description" content="WAWE Films — Video portfolio" />
-	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:title" content="WAWE Films" />
-	<meta name="twitter:description" content="WAWE Films — Video portfolio" />
-	{@html `<script type="application/ld+json">${JSON.stringify({ "@context": "https://schema.org", "@type": "Organization", name: "WAWE Films", url: "https://wawefilms.com" })}</script>`}
+	<meta name="theme-color" content="#040e19" />
 </svelte:head>
 
-<div class="min-h-svh flex flex-col bg-white text-black">
-	<Intro />
-	<Nav />
-	<main class="grow relative z-10 flex flex-col pt-[56px]">{@render children()}</main>
+<div class="site-shell flex flex-col">
+	<a class="skip-link" href="#main-content">Skip to content</a>
+	{#if page.url.pathname !== '/'}<Nav />{/if}
+	<main id="main-content" class="grow flex flex-col" tabindex="-1">{@render children()}</main>
 	<Footer />
 </div>
 
 <style>
-	:global(html, body) {
-		overflow-anchor: none;
-	}
+	.skip-link { position: fixed; top: .5rem; left: var(--site-gutter); z-index: 100; padding: .75rem 1rem; background: var(--color-paper); color: var(--color-midnight); transform: translateY(-200%); }
+	.skip-link:focus { transform: translateY(0); }
+	:global(body) { margin: 0; background: var(--color-midnight); }
 </style>

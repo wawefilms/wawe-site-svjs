@@ -1,73 +1,33 @@
 <script lang="ts">
-	import type { Media, Project } from '$lib/payload-types';
-
-	let { project }: { project: Project } = $props();
-
-	const poster = $derived(project.poster as Media | null);
-	const video = $derived(project.video as Media | null);
-
-	// Prefer poster, fallback to video for aspect; layout is stable via CSS aspect-ratio
-	const mediaForRatio: Media | null = $derived(poster ?? video);
-	const aspect = $derived(
-		mediaForRatio?.width && mediaForRatio?.height
-			? `${mediaForRatio.width} / ${mediaForRatio.height}`
-			: '16 / 9'
-	);
-
-	const posterUrl: string | null = $derived(
-		(poster as unknown as { url?: string })?.url ??
-			(video as unknown as { url?: string })?.url ??
-			null
-	);
-	const isVideoPoster = $derived(
-		(poster as unknown as { mimeType?: string })?.mimeType?.startsWith('video') ||
-			(poster as unknown as { mime_type?: string })?.mime_type?.startsWith('video') ||
-			posterUrl?.endsWith('.mp4') ||
-			posterUrl?.endsWith('.webm') ||
-			false
-	);
+	import type { ProjectSummary } from '$lib/projects/model';
+	import { normalizedMedia } from '$lib/media/normalize';
+	let { project, returnTo = '/#projects' }: { project: ProjectSummary; returnTo?: string } = $props();
+	const poster = $derived(normalizedMedia(project.poster));
+	const image = $derived(poster.imageUrl ? poster : normalizedMedia(project.video));
+	let failed = $state(false);
+	$effect(() => { image.imageUrl; failed = false; });
+	const href = $derived(`/project/${encodeURIComponent(project.slug)}?${new URLSearchParams({ returnTo })}`);
 </script>
 
-<a
-	href={`/project/${project.slug}`}
-	class="group block overflow-hidden rounded-xl bg-neutral-100"
-	style="view-transition-name: project-{project.slug}"
->
-	<div
-		class="relative w-full overflow-hidden bg-neutral-200"
-		style="aspect-ratio: {aspect}"
-	>
-		{#if posterUrl}
-			{#if isVideoPoster}
-				<video
-					src={posterUrl}
-					muted
-					loop
-					playsinline
-					preload="metadata"
-					class="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]"
-				></video>
-			{:else}
-				<img
-					src={posterUrl}
-					alt={poster?.alt ?? project.title}
-					loading="lazy"
-					class="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]"
-				/>
-			{/if}
+<a {href} class="project-card">
+	<div class="preview">
+		{#if image.imageUrl && !failed}
+			<img src={image.imageUrl} alt="" loading="lazy" decoding="async" width={image.width ?? undefined} height={image.height ?? undefined} onerror={() => failed = true} />
 		{:else}
-			<div class="flex h-full w-full items-center justify-center text-sm text-neutral-400">
-				No preview
-			</div>
-		{/if}
-		<div
-			class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 transition group-hover:opacity-100"
-		></div>
-	</div>
-	<div class="p-3">
-		<h3 class="line-clamp-1 text-[15px] font-medium leading-tight">{project.title}</h3>
-		{#if project.shortDesc}
-			<p class="mt-1 line-clamp-2 text-sm text-neutral-600">{project.shortDesc}</p>
+			<span class="no-preview">Preview unavailable</span>
 		{/if}
 	</div>
+	<h3>{project.title}</h3>
+	{#if project.shortDesc}<p>{project.shortDesc}</p>{/if}
 </a>
+
+<style>
+	.project-card { display: block; color: var(--color-surface-text); text-decoration: none; min-width: 0; }
+	.preview { aspect-ratio: 16 / 9; border-radius: var(--film-radius, 1rem); overflow: hidden; background: color-mix(in srgb, var(--color-paper) 8%, var(--color-midnight)); display: grid; place-items: center; }
+	img { width: 100%; height: 100%; object-fit: contain; }
+	.no-preview { color: var(--color-surface-muted); font-size: .875rem; }
+	h3 { font-family: var(--font-heading); font-size: clamp(1.5rem, 2.2vw, 2rem); line-height: 1.12; margin: 1rem 0 .45rem; overflow-wrap: anywhere; }
+	p { color: var(--color-surface-muted); font-size: .95rem; line-height: 1.5; margin: 0; max-width: 65ch; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+	a:focus-visible { outline: 2px solid var(--color-paper); outline-offset: 6px; border-radius: var(--film-radius); }
+	@media (hover: hover) and (pointer: fine) { a:hover h3 { text-decoration: underline; text-underline-offset: .2em; } }
+</style>

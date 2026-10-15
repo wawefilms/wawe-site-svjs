@@ -17,7 +17,15 @@ Thumbs.db
 .env.*
 !.env.example
 !.env.test
+.dev.vars
+.dev.vars.*
 
 # Vite
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Local agent runs and visual QA captures (surface contracts remain versionable)
+.pi/
+.impeccable/review/
+.impeccable/mocks/
+.impeccable/config.local.json

@@ -1,0 +1,284 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>PROTOTYPE — intro wash v2 (throwaway)</title>
+<!--
+  PROTOTYPE, wipe me. Throwaway per prototype skill.
+  Round 2 from the human (2026-09-18):
+  - Base fronts on E (3 tight breakers), fade-in width from D.
+  - CORRECTED TRAIL (BTT): dense crest lip at the TOP (leading) edge of each
+    wavefront, dissipating sparse downward. The old file had it backwards
+    (sparse top → dense dark mass at bottom), which read as "only receding".
+    ?trail=above restores the old (wrong) side for A/B.
+  - Natural timing: fronts surge (hesitate mid-travel) instead of linear.
+  - Two sets, strictly sequenced: set 2 (recede illusion) starts only after
+    set 1 has fully left the screen. ?sea=flip (default) drifts set-2 flood
+    texture downward toward the rising edge — the sea flips direction;
+    ?sea=same keeps set-1 drift.
+  - Text is two lines: wawe / films.
+  Modes (?p=):
+    p1: set 1 washes AGAINST the text (sheen passes, text stays);
+        set 2 covers the text and recedes, revealing what's behind.
+    p2: set 1 completely washes the text away;
+        set 2 transitions into the showreel intro (scale-up).
+    p3: set 1 fades the text to a ghost; set 2 recedes over the ghost,
+        washing the remainder away.
+  BTT only. Run: python3 -m http.server 8471 → /prototypes/prototype-intro-wash-v2.html?p=1
+-->
+<style>
+  html,body{margin:0;height:100%;background:#f2f6fb;color:#0b1e4b;overflow:hidden;
+    font-family:"Archivo","Helvetica Neue",Helvetica,Arial,sans-serif}
+  #stage{position:fixed;inset:0;overflow:hidden;background:#f2f6fb}
+  #behind{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+  #showreel{width:min(58vw,560px);aspect-ratio:16/9;border-radius:14px;
+    background:linear-gradient(135deg,#0e2a5a,#3b82f6);border:2px solid rgba(180,210,255,.7);
+    display:flex;align-items:center;justify-content:center;color:#fff;
+    font-weight:800;letter-spacing:.2em;box-shadow:0 12px 60px rgba(59,130,246,.35)}
+  #showreel::after{content:"▶";font-size:42px;margin-left:8px;opacity:.9}
+  #showreel.grow{transition:transform 1s cubic-bezier(.2,.7,.2,1);transform:scale(1)!important}
+  #title{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);margin:0;
+    text-align:center;font-size:min(13vw,132px);font-weight:600;letter-spacing:.14em;
+    text-transform:uppercase;line-height:1.02;color:#0b1e4b;z-index:5}
+  #title small{display:block}
+  canvas#sea{position:absolute;inset:0;width:100%;height:100%;z-index:10}
+  #bar{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);display:flex;gap:8px;align-items:center;
+    background:#f5f5f5;color:#111;border-radius:999px;padding:8px 14px;font-size:13px;
+    box-shadow:0 8px 30px rgba(0,0,0,.25);z-index:50}
+  #bar button{border:1px solid #999;background:#fff;border-radius:999px;padding:4px 12px;cursor:pointer;font-size:13px}
+  #bar button.on{background:#0e438e;color:#fff;border-color:#0e438e}
+  #state{position:fixed;left:12px;top:10px;font:12px/1.6 ui-monospace,monospace;color:#274b85;
+    background:rgba(255,255,255,.75);padding:8px 10px;border-radius:8px;z-index:50;white-space:pre}
+</style>
+</head>
+<body>
+<div id="stage">
+<div id="behind" style="clip-path: inset(0 0 100% 0)"><div id="showreel">SHOWREEL</div></div>
+  <h1 id="title">wawe<br>films</h1>
+  <canvas id="sea"></canvas>
+</div>
+<div id="state">boot…</div>
+<div id="bar">
+  <button data-p="1">p1 wash-against</button>
+  <button data-p="2">p2 wash-away→reel</button>
+  <button data-p="3">p3 fade→wash</button>
+  <button id="seaBtn">sea:flip</button>
+  <button id="trailBtn">trail:below</button>
+  <button id="replay">replay</button>
+</div>
+<script>
+const qs = new URLSearchParams(location.search);
+let P = ['1','2','3'].includes(qs.get('p')) ? qs.get('p') : '1';
+let SEA_FLIP = (qs.get('sea') || 'flip') === 'flip';
+let TRAIL_BELOW = (qs.get('trail') || 'below') === 'below'; // dense crest top, sparse trail below (corrected)
+
+const stage = document.getElementById('stage');
+const title = document.getElementById('title');
+const behind = document.getElementById('behind');
+const showreel = document.getElementById('showreel');
+const cv = document.getElementById('sea');
+const bctx = cv.getContext('2d');
+const stateEl = document.getElementById('state');
+
+// ---- config: E fronts (3 breakers, tight) + D-ish fade width ----
+const CFG = { band: 0.16, trail: 2.2, amp: [52, 28, 12], lace0: 0.10, lace1: 0.95,
+              bands: [{ ph: 0, gain: 1 }, { ph: 2.1, gain: 0.85 }, { ph: 4.2, gain: 0.7 }] };
+const SET1_SPAWNS = [1.2, 1.55, 1.9];
+const T1 = 2.8;          // set-1 sweep seconds (slower than v1 — natural)
+const T2 = 2.6;          // set-2 recede seconds
+const TITLE_HOLD = 1.2;
+
+const RAMP = ' .·:;+*oO0@█';
+const ink = v => v < 0.3 ? '#c3d7f4' : v < 0.55 ? '#6f9de6' : v < 0.8 ? '#2b5fc7' : '#14337f';
+const glyph = v => RAMP[Math.max(0, Math.min(RAMP.length - 1, Math.floor(v * RAMP.length)))];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+function hash2(x, y, s) { const h = Math.sin(x * 127.1 + y * 311.7 + s * 74.7) * 43758.5453; return h - Math.floor(h); }
+
+// Natural surge: fronts hesitate mid-travel instead of linear marching.
+function frontPos(t, spawn, S, depth) {
+  const lt = t - spawn;
+  if (lt < 0) return 1.6 * S;
+  const u = clamp(lt / T1, 0, 1);
+  const total = 1.6 * S + 0.3 * S + depth;
+  const surge = 0.05 * S * Math.sin(u * Math.PI * 2.2) * Math.sin(u * Math.PI);
+  return 1.6 * S - u * total + surge;
+}
+
+let t0 = performance.now(), t = 0;
+let set2t0 = -1, revealed = false, done = false;
+let rafId = 0; let stepping = false; // stepping: deterministic ?shot capture must not leak real rAFs
+let titleLatched = null; // null | 'part' | 'gone' — hard clips only, never opacity fades
+function clipTitleFromBelow(boundaryY) {
+const rr = title.getBoundingClientRect();
+const hide = Math.max(0, Math.min(rr.height, rr.bottom - boundaryY));
+title.style.clipPath = 'inset(0 0 ' + hide.toFixed(1) + 'px 0)';
+return hide >= rr.height - 0.5;
+}
+const bandT = () => innerHeight * CFG.band;
+function waveUnd(c, ph) {
+return CFG.amp[0] * Math.sin(c * 0.008 + t * 1.6 + ph) + CFG.amp[1] * Math.sin(c * 0.021 - t * 2.4 + ph * 1.7) + CFG.amp[2] * Math.sin(c * 0.05 + t * 4.0);
+}
+
+function drawSet1() {
+  const S = innerHeight, C = innerWidth, depth = bandT() * CFG.trail;
+  const cellT = 12, cellC = 18, tt = Math.floor(t * 9);
+  const fronts = SET1_SPAWNS.map((s, i) => frontPos(t, s, S, depth) + i * 6);
+const und = waveUnd; // shared front shape — set 2 uses the same fn
+  CFG.bands.forEach((b, bi) => {
+    const f = fronts[bi];
+    if (f > S * 1.7) return;
+    for (let c = 0; c < C; c += cellC) {
+      const edge = f + und(c, b.ph);
+      // CORRECTED: dense crest at the TOP (leading) edge, sparse trail below.
+      // ?trail=above restores the old backwards side for comparison.
+      const lo = TRAIL_BELOW ? edge : edge - depth;
+      const hi = TRAIL_BELOW ? edge + depth : edge;
+      for (let tp = lo; tp < hi; tp += cellT) {
+        if (tp < 0 || tp > S) continue;
+        const d = TRAIL_BELOW ? (tp - edge) / depth : (edge - tp) / depth; // 0 at crest → 1 deep in trail
+        const n = hash2(Math.round(tp / cellT), Math.round(c / cellC), tt);
+        if (n > CFG.lace0 + d * CFG.lace1) continue;
+        const v = Math.min(1, ((1 - d) * 0.85 + n * 0.35) * b.gain);
+        bctx.fillStyle = ink(v);
+        bctx.fillText(glyph(v), c + (n - 0.5) * 8, tp);
+      }
+    }
+  });
+  // Fully out? (lowest trail bottom above screen top)
+  const lowest = Math.max(...fronts) + depth;
+  return lowest < 0;
+}
+
+function drawSet2(Rx) {
+  const S = innerHeight, C = innerWidth;
+  const cellT = 12, cellC = 18, tt = Math.floor(t * 9);
+  const foam = S * 0.22;
+  // Flood is the SAME color as the calm background — the water reads through
+  // foam density only, never a color block. Opaque paint still covers the title.
+  bctx.fillStyle = '#f2f6fb';
+  bctx.fillRect(0, 0, C, clamp(Rx, 0, S));
+  for (let c = 0; c < C; c += cellC) {
+const line = Rx + waveUnd(c, 1.3); // SAME wavefront shape as set 1 (full triple-harmonic swells)
+    for (let tp = Math.max(0, line - foam); tp < Math.min(Rx, S); tp += cellT) {
+      if (tp < 0) continue;
+      const deep = (line - tp) / foam; // 0 at the waterline → 1 into the body
+      const scroll = SEA_FLIP ? Math.floor(t * 5) : -Math.floor(t * 2.5);
+      const n = hash2(Math.round(tp / cellT) + scroll, Math.round(c / cellC), tt);
+      const foamKeep = n <= (1 - deep) * 0.9 + 0.06;
+      const n2 = hash2(Math.round(tp / cellT), Math.round(c / cellC), tt + 7);
+      if (!foamKeep && n2 <= 0.90) continue; // sparse body speckle over flat water
+      const v = foamKeep ? Math.min(1, (1 - deep) * 0.85 + n * 0.3) : 0.85;
+      bctx.fillStyle = ink(v);
+      bctx.fillText(glyph(v), c + (n - 0.5) * 8, tp);
+    }
+}
+for (let c2 = 0; c2 <= C; c2 += cellC) {
+const edge2 = Rx + waveUnd(c2, 1.3); // SAME front as the foam: the reveal edge undulates with it
+bctx.clearRect(c2, Math.max(0, edge2), cellC + 1, S);
+} // end carve columns
+}
+
+function frame(now) {
+  t = (now - t0) / 1000;
+  const S = innerHeight, W = innerWidth;
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  if (cv.width !== W * dpr) { cv.width = W * dpr; cv.height = innerHeight * dpr; }
+  bctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (set2t0 < 0) {
+    bctx.fillStyle = '#f2f6fb';
+    bctx.fillRect(0, 0, W, S);
+  } else {
+    bctx.clearRect(0, 0, W, S); // revealed region stays transparent: #behind shows through
+  }
+  bctx.font = '16px ui-monospace,Menlo,monospace';
+  bctx.textBaseline = 'middle';
+  // Title lives UNDER the canvas: punch a viewing hole while it is alive so
+  // set-1 bands visibly wash OVER the letterforms.
+  if (set2t0 < 0 && titleLatched !== 'gone') {
+    const hr = title.getBoundingClientRect();
+    bctx.clearRect(hr.left - 24, hr.top - 24, hr.width + 48, hr.height + 48);
+  }
+
+  const r = title.getBoundingClientRect();
+  const titleCY = r.top + r.height / 2;
+  let phase = 'title';
+
+  if (t < TITLE_HOLD) {
+    phase = 'title hold';
+  } else if (set2t0 < 0) {
+    phase = 'set 1 — wash';
+    const out = drawSet1();
+    // Per-mode title behavior while set 1 passes.
+// p2/p3 share the trailing-edge wash boundary:
+const depth = bandT() * CFG.trail;
+const fronts = SET1_SPAWNS.map((s, i) => frontPos(t, s, S, depth) + i * 6);
+const trailEdge = Math.max(...fronts) + depth; // wash boundary: everything below it has been taken
+if (P === '2' && titleLatched !== 'gone') {
+if (clipTitleFromBelow(trailEdge)) titleLatched = 'gone'; // p2: bottom-up, hard-clipped at the front
+} else if (P === '3' && titleLatched !== 'part') {
+const rr = title.getBoundingClientRect();
+const cap = rr.height * 0.55; // set 1 takes the bottom 55% only; the top remainder waits for set 2
+const hide = Math.max(0, Math.min(cap, rr.bottom - trailEdge));
+title.style.clipPath = 'inset(0 0 ' + hide.toFixed(1) + 'px 0)';
+if (hide >= cap - 0.5) titleLatched = 'part';
+}
+    if (out) { set2t0 = t; }
+  } else {
+    const ru = clamp((t - set2t0) / T2, 0, 1);
+    const Rx = 1.35 * S - ru * 1.7 * S; // off-screen bottom → off-screen top
+    phase = 'set 2 — recede (illusion)';
+    drawSet2(Rx);
+// Canvas carves the wavy edge itself — behind stays fully unclipped once set 2 runs.
+behind.style.clipPath = 'none';
+    if (P === '2' && !revealed) {
+      revealed = true;
+      showreel.style.transform = 'scale(0.36)';
+      requestAnimationFrame(() => showreel.classList.add('grow'));
+    }
+if ((P === '1' || P === '3') && titleLatched !== 'gone') {
+let minLine = Infinity;
+for (let cc = 0; cc <= W; cc += 36) minLine = Math.min(minLine, Rx + waveUnd(cc, 1.3));
+if (clipTitleFromBelow(minLine)) titleLatched = 'gone'; // no peek through carved troughs
+}
+    if (ru >= 1 && !done) {
+      done = true;
+      phase = 'done — hold behind';
+      stateEl.textContent = `p${P} · done — behind revealed · sea:${SEA_FLIP ? 'flip' : 'same'} trail:${TRAIL_BELOW ? 'below✓' : 'above(old)'}\nreplay to run again`;
+      return; // freeze on the end state
+    }
+  }
+  stateEl.textContent = `p${P} · phase: ${phase}\nset2 ${set2t0 < 0 ? 'waiting for set 1 to exit' : 'running'} · sea:${SEA_FLIP ? 'flip' : 'same'} trail:${TRAIL_BELOW ? 'below✓' : 'above(old)'}`;
+if (!stepping) rafId = requestAnimationFrame(frame);
+}
+
+function setP(p) {
+  P = p;
+  qs.set('p', p);
+  history.replaceState(null, '', location.pathname + '?' + qs);
+  document.querySelectorAll('#bar button[data-p]').forEach(b =>
+    b.classList.toggle('on', b.dataset.p === p));
+  // reset run state
+  t0 = performance.now(); set2t0 = -1; revealed = false; done = false;
+titleLatched = null; title.style.clipPath = '';
+  showreel.classList.remove('grow'); showreel.style.transform = '';
+behind.style.clipPath = 'inset(0 0 100% 0)'; // stay hidden until set 2 uncovers
+cancelAnimationFrame(rafId); // replay fix: the loop stops scheduling at done, so restart it
+rafId = requestAnimationFrame(frame);
+}
+document.querySelectorAll('#bar button[data-p]').forEach(b => b.onclick = () => setP(b.dataset.p));
+document.getElementById('replay').onclick = () => setP(P);
+const seaBtn = document.getElementById('seaBtn'), trailBtn = document.getElementById('trailBtn');
+function syncToggles() {
+  seaBtn.textContent = SEA_FLIP ? 'sea:flip' : 'sea:same';
+  trailBtn.textContent = TRAIL_BELOW ? 'trail:below' : 'trail:above';
+  qs.set('sea', SEA_FLIP ? 'flip' : 'same'); qs.set('trail', TRAIL_BELOW ? 'below' : 'above');
+  history.replaceState(null, '', location.pathname + '?' + qs);
+}
+seaBtn.onclick = () => { SEA_FLIP = !SEA_FLIP; syncToggles(); };
+trailBtn.onclick = () => { TRAIL_BELOW = !TRAIL_BELOW; syncToggles(); };
+syncToggles();
+setP(P);
+if (qs.has('shot')) { stepping = true; cancelAnimationFrame(rafId); const target = parseFloat(qs.get('shot')); const now0 = performance.now(); t0 = now0; for (let s = 0; s <= target; s += 100) frame(now0 + s); stepping = false; cancelAnimationFrame(rafId); }
+</script>
+</body>
+</html>

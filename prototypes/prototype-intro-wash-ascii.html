@@ -1,0 +1,539 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>PROTOTYPE — intro wash ascii title (throwaway)</title>
+<!--
+  PROTOTYPE, wipe me. Throwaway per prototype skill.
+  COPIED from prototype-intro-wash-v2.html (frozen — do not mutate it).
+  Design question: what if wawe/films is ALSO ascii-rendered — same glyph
+    material (RAMP + ink) as the wash — instead of clean Archivo type?
+    Does shared material hold together, or hurt legibility?
+  Title modes (?title=): ascii (default, canvas-drawn glyph letterforms)
+    vs dom (v2 control: real <h1> + viewing hole, for A/B legibility check).
+  Ascii styles (?tstyle=): solid (dense dark glyphs, max legibility) vs
+    foam (sparse sea-foam speckle — title barely holds, etched look).
+  Reveal (?fade=px, default 110): the showreel fades in through a soft band that
+    follows the wavefront (destination-out gradient erase) — no hard carved edge.
+    ?fade=0 restores the old hard carve for A/B. The ascii title survivor
+    dissolves through the same band instead of hard-popping.
+  DECISION 2026-09-25 — KEEP p3 + sea:same + trail:below + title:ascii + gradient fade.
+    DISCARDED: p1/p2, sea:flip, trail:above, title:dom, ?fade=0 hard carve (params still
+    parse for old links; buttons removed). OPEN: title density — ?tstyle=mid (new default)
+    sits between solid (too dark) and foam (too light).
+  p3 set-1: CONTINUOUS wash melt — each cell melts as the LEAD crest approaches and
+    reaches full ghost exactly as the crest passes over it (fadeEdge = front0 + its
+    undulation, melt zone ~0.24 screen heights). Eat edge stays clamped at 55%; the
+    'part' latch is a state flag only, no visual step.
+  CONTACT PHYSICS (?agit=, default 1): cells near the crest are shoved upward (deterministic
+    jitter scaled by proximity), churned through the glyph ramp, and spray spume (+/*) along
+    the contact line. ?agit=0 = pure melt. All noise is hash(tt)-based, so ?shot= stays exact.
+  DECISION 2026-09-25 #2 — loop→single-sweep timeline, DialKit curves, global speed.
+    Leading tightened to the logo lockup (0.93). No random break delay: the outro starts
+    the instant the loading loop completes.
+  DECISION 2026-09-25 #3 — seamless surge: sea body in the loop, backwash, runup takeover
+    of in-flight fronts, recede sheet. The loop→outro gap is gone structurally, not tuned away.
+  DECISION 2026-09-25 #4 — tight timing (revised #7): break at loop end, ready 4s / run-up 3.2s / recede 2.2s.
+  DECISION 2026-09-25 #7 — loop dissolves in 0.9s once the surge comes; one wave crosses the screen.
+  DECISION 2026-09-25 #5 — calm loop (uniform period, fade in/out); break at loop end.
+  DECISION 2026-09-25 #6 — runup surge starts at the bottom like a loop breaker, runs past the shore to the top.
+  DECISION 2026-09-25 #8 — grid density dial (?grid=, default 1.35x); timeline scrubber + play/pause
+    in the bar (deterministic re-simulation — scrubbed frames are exact, like ?shot=).
+  TIMELINE v3 (seamless — every handoff is pixel-continuous by construction):
+  LOOP: unified sea (wavy flood body below the lead breaker + bands + shore spray).
+    Breakers rise (fade in), break, dissolve forward; uniform period, exactly periodic, calm.
+  LOAD (?ready=s / assets button) → the last wave completes its loop; then ONE fresh surge
+    climbs bottom→topY on the waterline curve while loop stragglers finish invisibly beneath it.
+  RUN-UP: the fresh surge climbs while the loop overlap dissolves; title melts on contact.
+  Title melts via contact physics + envelope from first-hit; crown sprays at the lead.
+  RECEDE: v2 rising illusion restored — edge runs bottom→top, showreel exposed below the lip.
+  No gaps possible: loop flood top == runup flood top at break; runup end == recede start.
+  DIALKIT (vendored vanilla): titleFade + waterline + recede easing graphs,
+  speed/shore/loop/agit dials. All values sync to the URL (?shot= stays exact).
+  BTT only. Run: python3 -m http.server 8471 → /prototypes/prototype-intro-wash-ascii.html?p=1
+-->
+<style>
+  html,body{margin:0;height:100%;background:#f2f6fb;color:#0b1e4b;overflow:hidden;
+    font-family:"Archivo","Helvetica Neue",Helvetica,Arial,sans-serif}
+  #stage{position:fixed;inset:0;overflow:hidden;background:#f2f6fb}
+  #behind{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+  #showreel{width:min(58vw,560px);aspect-ratio:16/9;border-radius:14px;
+    background:linear-gradient(135deg,#0e2a5a,#3b82f6);border:2px solid rgba(180,210,255,.7);
+    display:flex;align-items:center;justify-content:center;color:#fff;
+    font-weight:800;letter-spacing:.2em;box-shadow:0 12px 60px rgba(59,130,246,.35)}
+  #showreel::after{content:"▶";font-size:42px;margin-left:8px;opacity:.9}
+  #showreel.grow{transition:transform 1s cubic-bezier(.2,.7,.2,1);transform:scale(1)!important}
+  #title{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);margin:0;
+    text-align:center;font-size:min(13vw,132px);font-weight:600;letter-spacing:.14em;
+    text-transform:uppercase;line-height:0.93;color:#0b1e4b;z-index:5} /* 0.93 matches the logo lockup gap/cap ratio (~0.30) — was 1.02 */
+  #title small{display:block}
+  #title.ascii-live{visibility:hidden} /* layout kept so rect + mask stay aligned */
+  #bar{flex-wrap:wrap;max-width:94vw;justify-content:center}
+  canvas#sea{position:absolute;inset:0;width:100%;height:100%;z-index:10}
+  #bar{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);display:flex;gap:8px;align-items:center;
+    background:#f5f5f5;color:#111;border-radius:999px;padding:8px 14px;font-size:13px;
+    box-shadow:0 8px 30px rgba(0,0,0,.25);z-index:50}
+  #bar button{border:1px solid #999;background:#fff;border-radius:999px;padding:4px 12px;cursor:pointer;font-size:13px}
+  #bar button.on{background:#0e438e;color:#fff;border-color:#0e438e}
+  #state{position:fixed;left:12px;top:10px;font:12px/1.6 ui-monospace,monospace;color:#274b85;
+    background:rgba(255,255,255,.75);padding:8px 10px;border-radius:8px;z-index:50;white-space:pre}
+</style>
+<link rel="stylesheet" href="vendor/dialkit/styles.css">
+</head>
+<body>
+<div id="stage">
+<div id="behind" style="clip-path: inset(0 0 100% 0)"><div id="showreel">SHOWREEL</div></div>
+  <h1 id="title">wawe<br>films</h1>
+  <canvas id="sea"></canvas>
+</div>
+<div id="state">boot…</div>
+<div id="bar">
+  <button id="tstyleBtn">style:mid</button>
+  <button id="assetsBtn">assets:waiting</button>
+  <button id="replay">replay</button>
+  <button id="playBtn" title="pause / resume">⏸</button>
+  <input id="scrub" type="range" min="0" max="16" step="0.05" value="0" style="width:min(30vw,260px)" title="scrub the timeline">
+</div>
+<script src="vendor/dialkit/browser.global.js"></script>
+<script>
+const qs = new URLSearchParams(location.search);
+let P = ['1','2','3'].includes(qs.get('p')) ? qs.get('p') : '3'; // LOCKED p3 fade→wash (decision 2026-09-25; ?p= still parses for old links)
+let SEA_FLIP = (qs.get('sea') || 'same') === 'flip'; // LOCKED sea:same (decision 2026-09-25)
+let TRAIL_BELOW = (qs.get('trail') || 'below') === 'below'; // dense crest top, sparse trail below (corrected)
+let TITLE_ASCII = (qs.get('title') || 'ascii') === 'ascii'; // ascii (canvas glyphs) vs dom (v2 <h1> control)
+let TSTYLE = ['solid','foam','mid'].includes(qs.get('tstyle')) ? qs.get('tstyle') : 'mid'; // mid (default) sits between solid (too dark) and foam (too light)
+let FADE = qs.has('fade') ? Math.max(0, parseFloat(qs.get('fade')) || 0) : 110; // reveal gradient depth in px — ?fade=0 restores the old hard carve for A/B (restored — must stay above AGIT)
+let AGIT = qs.has('agit') ? Math.max(0, parseFloat(qs.get('agit')) || 0) : 1; // contact-physics intensity: shove+churn+spume scale — 0 = pure melt (previous behavior)
+let SPEED = qs.has('speed') ? Math.max(0.05, parseFloat(qs.get('speed')) || 1) : 1; // global clock: loop, sweep, churn all scale; ?shot= counts scaled ms
+let SHORE = qs.has('shore') ? Math.max(0, parseFloat(qs.get('shore')) || 0) : 140; // gap px: max breaker reach → text bottom
+let READY_S = qs.has('ready') ? Math.max(0, parseFloat(qs.get('ready')) || 0) / 1000 : 4; // assets-loaded time (s); tight default ≈ one loop
+let SWEEP_S = qs.has('sweep') ? Math.max(1, parseFloat(qs.get('sweep')) || 3.2) : 3.2; // run-up duration (s) — tight
+let LOOP_S = qs.has('loop') ? Math.max(1, parseFloat(qs.get('loop')) || 3.6) : 3.6; // breaker period (s)
+let TITLE_DUR = qs.has('tdur') ? Math.max(0.5, parseFloat(qs.get('tdur')) || 3.2) : 3.2; // title envelope duration (s)
+let TITLE_EASE = parseEase(qs.get('tease'), [0.22, 1, 0.36, 1]); // fast attack, endless tail (easeOutQuint-ish)
+let WATER_EASE = parseEase(qs.get('wease'), [0.45, 0, 0.35, 1]); // gathering heave, soft arrival
+let assetsLoaded = false, loadedAt = -1, breakT0 = -1, tHit = -1, fadeQ = 0; // break = instant takeover at load; tHit = first crest touch
+let RECEDE_S = qs.has('recede') ? Math.max(1, parseFloat(qs.get('recede')) || 2.2) : 2.2; // receding sheet duration (s) — tight
+let GRID = qs.has('grid') ? Math.min(2, Math.max(0.5, parseFloat(qs.get('grid')) || 1)) : 1.35; // ascii grid density multiplier (inline min/max: clamp is declared later)
+let maskStep = 0, maskG = 0; // title mask step follows GRID; rebuild when it changes
+let RECEDE_EASE = parseEase(qs.get('rease'), [0.4, 0, 0.6, 1]); // slow peel start, steady drain
+let recedeT0 = -1, runY0 = null, runA0 = null; // runup takeover state, captured at break
+const recedeEase = u => bez(clamp(u, 0, 1), RECEDE_EASE);
+
+const stage = document.getElementById('stage');
+const title = document.getElementById('title');
+const behind = document.getElementById('behind');
+const showreel = document.getElementById('showreel');
+const cv = document.getElementById('sea');
+const bctx = cv.getContext('2d');
+const stateEl = document.getElementById('state');
+
+// ---- config: E fronts (3 breakers, tight) + D-ish fade width ----
+const CFG = { band: 0.16, trail: 2.2, amp: [52, 28, 12], lace0: 0.10, lace1: 0.95,
+              bands: [{ ph: 0, gain: 1 }, { ph: 2.1, gain: 0.85 }, { ph: 4.2, gain: 0.7 }] };
+
+const RAMP = ' .·:;+*oO0@█';
+const ink = v => v < 0.3 ? '#c3d7f4' : v < 0.55 ? '#6f9de6' : v < 0.8 ? '#2b5fc7' : '#14337f';
+const glyph = v => RAMP[Math.max(0, Math.min(RAMP.length - 1, Math.floor(v * RAMP.length)))];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+function hash2(x, y, s) { const h = Math.sin(x * 127.1 + y * 311.7 + s * 74.7) * 43758.5453; return h - Math.floor(h); }
+
+// Cubic-bezier sampler for DialKit easing curves: e=[x1,y1,x2,y2].
+function bez(u, e) {
+  let lo = 0, hi = 1, tm = u;
+  for (let k = 0; k < 12; k++) { const x = 3*tm*(1-tm)*(1-tm)*e[0] + 3*tm*tm*(1-tm)*e[2] + tm*tm*tm; if (x < u) lo = tm; else hi = tm; tm = (lo + hi) / 2; }
+  return 3*tm*(1-tm)*(1-tm)*e[1] + 3*tm*tm*(1-tm)*e[3] + tm*tm*tm;
+}
+function parseEase(s, dflt) { const p = String(s || '').split(',').map(parseFloat); return p.length === 4 && p.every(isFinite) ? p : dflt; }
+const titleEase = u => bez(clamp(u, 0, 1), TITLE_EASE);
+const waterEase = u => bez(clamp(u, 0, 1), WATER_EASE);
+// One looping breaker: rise with shoaling ease → break at the shore → withdraw and fade.
+function loopPhase(i, S, shoreY) {
+  const u = ((t / LOOP_S) + i / 3) % 1; // uniform period: the loop is exactly periodic, calm
+  if (u < 0.62) { const e = u / 0.62; const ee = e < 0.5 ? 2*e*e : 1 - Math.pow(-2*e+2, 2) / 2; const fi = Math.min(1, e / 0.15); return { y: 1.5*S - (1.5*S - shoreY) * ee, alpha: fi * fi * (3 - 2 * fi), breaking: 0 }; } // fade in (matches the fade-out: no pop at wrap)
+  if (u < 0.78) return { y: shoreY, alpha: 1, breaking: (u - 0.62) / 0.16 };
+  const w = (u - 0.78) / 0.22; // dissolve forward: holds near the top, fading out as the next wave replaces it
+  return { y: shoreY - 12 * w, alpha: Math.max(0, 1 - w), breaking: 0 };
+}
+
+let t0 = performance.now(), t = 0;
+let lastNow = -1, revealed = false, done = false; // scaled-time cursor + outro state
+let rafId = 0; let stepping = false; // stepping: deterministic ?shot capture must not leak real rAFs
+let titleLatched = null; // null | 'gone' — 'gone' trips the showreel scale-up
+// ---- ascii title: same glyph material (RAMP + ink) as the wash ----
+const TCELL = 10; // title grid step — finer than the sea's 12x18 so WAWE/FILMS stays legible
+const maskCv = document.createElement('canvas');
+const maskCtx = maskCv.getContext('2d', { willReadFrequently: true });
+let maskGrid = null, maskW = 0, maskH = 0, maskVW = 0, maskVH = 0;
+function buildMask(W, H) {
+  maskStep = TCELL / GRID; maskG = GRID; const st = maskStep, half = st / 2;
+  maskCv.width = W; maskCv.height = H;
+  maskCtx.fillStyle = '#000'; maskCtx.fillRect(0, 0, W, H);
+  const fs = Math.min(W * 0.13, 132); // same size rule as #title CSS
+  maskCtx.fillStyle = '#fff';
+  maskCtx.font = '600 ' + fs + 'px Archivo,"Helvetica Neue",Helvetica,Arial,sans-serif';
+  maskCtx.textAlign = 'center'; maskCtx.textBaseline = 'middle';
+  try { maskCtx.letterSpacing = (fs * 0.14) + 'px'; } catch (e) {}
+  const cy = H * 0.42, lh = fs * 0.93; // same anchor + leading as #title (logo lockup)
+  maskCtx.fillText('WAWE', W / 2, cy - lh / 2);
+  maskCtx.fillText('FILMS', W / 2, cy + lh / 2);
+  const data = maskCtx.getImageData(0, 0, W, H).data;
+  maskW = Math.ceil(W / st); maskH = Math.ceil(H / st);
+  maskGrid = new Uint8Array(maskW * maskH);
+  for (let gy = 0; gy < maskH; gy++) for (let gx = 0; gx < maskW; gx++) {
+    const px = Math.min(W - 1, Math.floor(gx * st + half)); // floor: typed arrays return undefined for float indices
+    const py = Math.min(H - 1, Math.floor(gy * st + half));
+    if (data[(py * W + px) * 4] > 100) maskGrid[gy * maskW + gx] = 1; // red channel: white text vs black bg (alpha is 255 everywhere)
+  }
+  maskVW = W; maskVH = H;
+}
+// boundaryYAt(sx, sy): cells BELOW the returned line are washed away. ghost dims the survivor (p3).
+function drawAsciiTitle(boundaryYAt, ghost, fadePx, prox, fadeEdgeAt) { // fadePx>0: set-2 band dissolve. prox>0: p3 set-1 continuous melt — per-cell keep+ink ride fadeEdgeAt (lead crest) from first contact, no latch step
+  const tt = Math.floor(t * 9);
+  const ghostDim = ghost && titleLatched === 'part';
+  bctx.save();
+  bctx.font = '13px ui-monospace,Menlo,monospace';
+  bctx.textBaseline = 'middle';
+  for (let gy = 0; gy < maskH; gy++) {
+    const sy = gy * maskStep + maskStep / 2;
+    for (let gx = 0; gx < maskW; gx++) {
+      if (!maskGrid[gy * maskW + gx]) continue;
+      const sx = gx * maskStep + maskStep / 2;
+      const edge = boundaryYAt(sx, sy);
+      if (sy > edge) continue; // eaten by the wash
+      const dist = edge - sy;
+      const n = hash2(gx, gy, tt);
+      if (prox > 0) { // CONTACT PHYSICS: the crest shoves, churns and sprays the letterforms
+        const cd = (fadeEdgeAt ? fadeEdgeAt(sx, sy) : edge) - sy; // signed crest distance
+        const kk = clamp(cd / prox, 0, 1);
+        const energy = (1 - kk) * AGIT; // 0 far ahead → full at the contact line
+        const kF = TSTYLE === 'foam' ? 0.52 : TSTYLE === 'mid' ? 0.78 : 1.0;
+        const kG = TSTYLE === 'foam' ? 0.34 : TSTYLE === 'mid' ? 0.5 : 0.62;
+        const keep0 = kG + (kF - kG) * kk;
+        if (n > keep0 + (kG - keep0) * fadeQ) continue;
+        const fF = TSTYLE === 'foam' ? 0.30 + n * 0.35 : TSTYLE === 'mid' ? 0.52 + n * 0.33 : 0.78 + n * 0.22;
+        const fG = TSTYLE === 'foam' ? 0.12 + n * 0.25 : TSTYLE === 'mid' ? 0.15 + n * 0.25 : 0.18 + n * 0.22;
+        const j1 = hash2(gx, gy, tt + 11) - 0.5, j2 = hash2(gx, gy, tt + 27) - 0.5;
+        const dx = j1 * 14 * energy, dy = j2 * 10 * energy - 6 * energy; // shoved upward with the surge
+        const melt = fG + (fF - fG) * kk;
+        let vv = melt + (fG - melt) * fadeQ; // title envelope: fast→slow→ghost, the edge guarantees disappearance
+        vv = clamp(vv + (hash2(gx, gy, tt + 5) - 0.5) * 0.9 * energy, 0, 1); // churn: boil through the ramp
+        bctx.fillStyle = ink(vv);
+        bctx.fillText(glyph(vv), sx + dx + (n - 0.5) * 5, sy + dy);
+        if (AGIT > 0 && cd > 0 && cd < 20) { // spume: the contact line fizzes
+          const ns = hash2(gx, gy, tt + 43);
+          if (ns < 0.30) {
+            bctx.fillStyle = ink(0.15 + ns * 0.5);
+            bctx.fillText(ns < 0.15 ? '+' : '*', sx + dx + (ns - 0.5) * 22, sy + dy - 6 - ns * 30);
+          }
+        }
+        continue; // interaction owns the cell — stepped ghost branches below are bypassed
+      }
+      if (fadePx > 0) {
+        const aa = clamp(dist / fadePx, 0, 1); // position inside the reveal band → alpha
+        if (aa <= 0) continue;
+        bctx.globalAlpha = aa;
+      } else if (dist < 22) { // ragged bite right at the wash boundary
+        const n2 = hash2(gx, gy, tt + 31);
+        if (n2 < (1 - dist / 22) * 0.85) continue;
+      }
+      if (TSTYLE === 'foam') {
+        if (n > (ghostDim ? 0.34 : 0.52)) continue; // sparse speckle: title barely holds
+        const v = ghostDim ? 0.12 + n * 0.25 : 0.30 + n * 0.35;
+        bctx.fillStyle = ink(v);
+        bctx.fillText(glyph(v), sx + (n - 0.5) * 5, sy);
+      } else if (TSTYLE === 'mid') {
+        if (n > (ghostDim ? 0.5 : 0.78)) continue; // in-between: denser than foam, airier + lighter than solid
+        const v = ghostDim ? 0.15 + n * 0.25 : 0.52 + n * 0.33;
+        bctx.fillStyle = ink(v);
+        bctx.fillText(glyph(v), sx + (n - 0.5) * 5, sy);
+      } else {
+        const v = ghostDim ? 0.18 + n * 0.22 : 0.78 + n * 0.22;
+        if (ghostDim) {
+          const n3 = hash2(gx, gy, tt + 7);
+          if (n3 > 0.62) continue; // ghost: thin the survivors too
+        }
+        bctx.fillStyle = ink(v);
+        bctx.fillText(glyph(v), sx + (n - 0.5) * 5, sy);
+      }
+    }
+  }
+  bctx.restore();
+}
+const noEdge = () => Infinity;
+const bandT = () => innerHeight * CFG.band;
+function waveUnd(c, ph) {
+return CFG.amp[0] * Math.sin(c * 0.008 + t * 1.6 + ph) + CFG.amp[1] * Math.sin(c * 0.021 - t * 2.4 + ph * 1.7) + CFG.amp[2] * Math.sin(c * 0.05 + t * 4.0);
+}
+
+// Front state lists. Loop cycles beneath; runup takes over the in-flight fronts at break.
+function frontListLoop(S, shoreY) {
+  const out = [];
+  for (let i = 0; i < 3; i++) {
+    let env = 1;
+    if (breakT0 >= 0) { // post-break: the loop bows out fast — one wave crosses the screen
+      env = Math.min(1, Math.max(0, 1 - (t - breakT0) / 0.9));
+      if (env <= 0) continue;
+    }
+    const lp = loopPhase(i, S, shoreY);
+    out.push({ y: lp.y, ph: CFG.bands[i].ph, gain: CFG.bands[i].gain, alpha: lp.alpha * env, breaking: lp.breaking });
+  }
+  return out;
+}
+function frontListRunup(S, shoreY) { // ONE fresh wave from the bottom — rises like any loop breaker, but never stops at the shore
+  const u = clamp((t - breakT0) / SWEEP_S, 0, 1);
+  const surgeY = 1.5 * S - waterEase(u) * 1.85 * S; // bottom → off-top, the full travel
+  const fi = Math.min(1, u / 0.12), a = fi * fi * (3 - 2 * fi); // fade in like a loop breaker
+  const out = [];
+  for (let i = 0; i < 3; i++) out.push({ y: surgeY - i * 70, ph: CFG.bands[i].ph, gain: CFG.bands[i].gain, alpha: a, breaking: 0 });
+  return out;
+}
+function leadOf(list, sx) { // highest reach per column — the waterline the title feels
+  let m = Infinity;
+  for (const f of list) m = Math.min(m, f.y + waveUnd(sx, f.ph));
+  return m;
+}
+function paintSea(list, sprays) { // sprays: [{y, amt}] foam crowns — shore breaks and/or the surge lip
+  const S = innerHeight, C = innerWidth, depth = bandT() * CFG.trail;
+  const cellT = 12 / GRID, cellC = 18 / GRID, tt = Math.floor(t * 9);
+  for (let c2 = 0; c2 <= C; c2 += 9) { // flood body follows the lead front
+    let top = Infinity;
+    for (const f of list) top = Math.min(top, f.y + waveUnd(c2, f.ph));
+    if (top > S) continue;
+    bctx.fillStyle = '#f2f6fb';
+    bctx.fillRect(c2, Math.max(0, top), 10, S - Math.max(0, top));
+  }
+  for (const f of list) {
+    if (f.alpha <= 0) continue;
+    bctx.save(); bctx.globalAlpha = f.alpha;
+    for (let c = 0; c < C; c += cellC) {
+      const edge = f.y + waveUnd(c, f.ph);
+      for (let tp = edge; tp < edge + depth; tp += cellT) {
+        if (tp < 0 || tp > S) continue;
+        const d = (tp - edge) / depth;
+        const n = hash2(Math.round(tp / cellT), Math.round(c / cellC), tt);
+        if (n > CFG.lace0 + d * CFG.lace1) continue;
+        const v = Math.min(1, ((1 - d) * 0.85 + n * 0.35) * f.gain);
+        bctx.fillStyle = ink(v);
+        bctx.fillText(glyph(v), c + (n - 0.5) * 8, tp);
+      }
+    }
+    bctx.restore();
+  }
+  for (const sp of (sprays || [])) { // foam crowns: shore breaks + climbing surge lip
+    for (let c = 0; c < C; c += cellC) {
+      const line = sp.y + waveUnd(c, 1.3) * 0.3;
+      for (let tp = line - 46; tp < line + 10; tp += cellT) {
+        const n = hash2(Math.round(tp / cellT), Math.round(c / cellC), tt + 3);
+        if (n > (tp < line - 10 ? 0.25 : 0.85) * (sp.amt === undefined ? 1 : sp.amt)) continue;
+        const sv = 0.25 + n * 0.4;
+        bctx.fillStyle = ink(sv);
+        bctx.fillText(glyph(sv), c + (n - 0.5) * 10, tp);
+      }
+    }
+  }
+}
+
+// Receding illusion (v2 language restored): the edge RISES bottom→top, showreel exposed below it.
+function drawRecede(F) {
+  const S = innerHeight, C = innerWidth;
+  const cellT = 12 / GRID, cellC = 18 / GRID, tt = Math.floor(t * 9);
+  const foam = S * 0.22;
+  bctx.fillStyle = '#f2f6fb';
+  bctx.fillRect(0, 0, C, S); // full flood; the carve below exposes the showreel
+  for (let c = 0; c < C; c += cellC) {
+    const line = F + waveUnd(c, 1.3);
+    for (let tp = Math.max(0, line - foam); tp < Math.min(line, S); tp += cellT) {
+      const deep = (line - tp) / foam; // 0 at the waterline → 1 into the body above
+      const n = hash2(Math.round(tp / cellT) + Math.floor(t * 5), Math.round(c / cellC), tt);
+      const keep = n <= (1 - deep) * 0.9 + 0.06;
+      const n2 = hash2(Math.round(tp / cellT), Math.round(c / cellC), tt + 7);
+      if (!keep && n2 <= 0.90) continue; // sparse body speckle over flat water
+      const v = keep ? Math.min(1, (1 - deep) * 0.85 + n * 0.3) : 0.85;
+      bctx.fillStyle = ink(v);
+      bctx.fillText(glyph(v), c + (n - 0.5) * 8, tp);
+    }
+  }
+  bctx.save(); // gradient carve below the lip — the reveal edge undulates upward
+  bctx.globalCompositeOperation = 'destination-out';
+  for (let c2 = 0; c2 <= C; c2 += 9) {
+    const edge2 = F + waveUnd(c2, 1.3);
+    const bt = Math.max(0, edge2 - FADE), be = Math.max(0, edge2);
+    const gg = bctx.createLinearGradient(0, bt, 0, Math.max(bt + 1, be));
+    gg.addColorStop(0, 'rgba(0,0,0,0)'); gg.addColorStop(1, 'rgba(0,0,0,1)');
+    bctx.fillStyle = gg; bctx.fillRect(c2, bt, 10, Math.max(0, be - bt));
+    if (edge2 < S) { bctx.fillStyle = 'rgba(0,0,0,1)'; bctx.fillRect(c2, be, 10, S - be); }
+  }
+  bctx.restore();
+}
+
+function frame(now) {
+  if (lastNow < 0) lastNow = now;
+  t += ((now - lastNow) / 1000) * SPEED; // global clock: loop, sweep, churn scale together
+  lastNow = now;
+  const S = innerHeight, W = innerWidth;
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  if (cv.width !== W * dpr) { cv.width = W * dpr; cv.height = innerHeight * dpr; }
+  bctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  bctx.fillStyle = '#f2f6fb';
+  bctx.fillRect(0, 0, W, S); // painters (loop/runup/recede) repaint every frame
+  bctx.font = '16px ui-monospace,Menlo,monospace';
+  bctx.textBaseline = 'middle';
+  // ASCII title is painted ON the canvas (under the wash). DOM title only
+  // lives in ?title=dom control mode, where v2 punches a viewing hole.
+  // ASCII title is painted ON the canvas (never DOM); rebuild the mask on resize.
+  if (!maskGrid || W !== maskVW || S !== maskVH || GRID !== maskG) buildMask(W, S);
+
+  const r = title.getBoundingClientRect();
+  const titleCY = r.top + r.height / 2;
+  let phase = 'title';
+
+  const shoreY = r.bottom + SHORE;
+  if (!assetsLoaded && t >= READY_S) { assetsLoaded = true; loadedAt = t; }
+  if (assetsLoaded && breakT0 < 0) {
+    breakT0 = Math.ceil(loadedAt / LOOP_S) * LOOP_S; // the last wave completes its loop…
+  }
+  if (breakT0 < 0 || t < breakT0) {
+    phase = assetsLoaded ? 'shore loop — finishing last loop' : 'shore loop — waiting for assets';
+    const list = frontListLoop(S, shoreY);
+    const sprays = [];
+    for (const f of list) if (f.breaking > 0 && breakT0 < 0) sprays.push({ y: shoreY, amt: f.breaking }); // shore spray dies with the loop
+    drawAsciiTitle(noEdge, false, 0, innerHeight * 0.24, (sx) => leadOf(list, sx)); // full title, kissed by breakers
+    paintSea(list, sprays);
+  } else if (recedeT0 < 0) {
+    phase = 'run-up — surge over the text';
+    const u = clamp((t - breakT0) / SWEEP_S, 0, 1);
+    const list = frontListRunup(S, shoreY);
+    let leadMin = Infinity;
+    for (const f of list) leadMin = Math.min(leadMin, f.y);
+    const loopList = frontListLoop(S, shoreY); // stragglers finish beneath the surge, leave at alpha 0
+    const sprays = [{ y: leadMin, amt: 1 }];
+    for (const f of loopList) if (f.breaking > 0) sprays.push({ y: shoreY, amt: f.breaking });
+    const edgeAt = (sx) => leadOf(list, sx);
+    if (tHit < 0 && leadMin - 95 <= r.bottom) tHit = t; // first crest touch starts the envelope
+    fadeQ = tHit < 0 ? 0 : titleEase(clamp((t - tHit) / TITLE_DUR, 0, 1));
+    paintSea(list.concat(loopList), sprays); // the loop keeps lapping beneath the climbing surge
+    if (titleLatched !== 'gone') {
+      let minLine = Infinity;
+      for (let cc = 0; cc <= W; cc += 36) minLine = Math.min(minLine, edgeAt(cc));
+      if (r.bottom - minLine >= r.height - 0.5) titleLatched = 'gone';
+      else drawAsciiTitle(edgeAt, false, FADE, innerHeight * 0.24, edgeAt);
+    }
+    behind.style.clipPath = 'none';
+    if (titleLatched === 'gone' && !revealed) {
+      revealed = true;
+      showreel.style.transform = 'scale(0.36)';
+      requestAnimationFrame(() => showreel.classList.add('grow'));
+    }
+    if (u >= 1) recedeT0 = t; // surge spent at the top — the sheet starts draining next frame
+  } else {
+    phase = 'recede — exposing showreel';
+    const v = clamp((t - recedeT0) / RECEDE_S, 0, 1);
+    const F = 1.35 * S - recedeEase(v) * 1.7 * S; // the old rising illusion: bottom → off-top
+    const edgeAt = (sx) => F + waveUnd(sx, 1.3);
+    drawRecede(F);
+    if (titleLatched !== 'gone') { // safety: remnants wash with the falling edge
+      let minLine = Infinity;
+      for (let cc = 0; cc <= W; cc += 36) minLine = Math.min(minLine, edgeAt(cc));
+      if (r.bottom - minLine >= r.height - 0.5) titleLatched = 'gone';
+      else drawAsciiTitle(edgeAt, false, FADE, innerHeight * 0.24, edgeAt);
+    }
+    behind.style.clipPath = 'none';
+    if (titleLatched === 'gone' && !revealed) {
+      revealed = true;
+      showreel.style.transform = 'scale(0.36)';
+      requestAnimationFrame(() => showreel.classList.add('grow'));
+    }
+    if (v >= 1 && !done) {
+      done = true;
+      phase = 'done — showreel revealed';
+      stateEl.textContent = `wash · done — showreel revealed · t:${t.toFixed(1)}s\nreplay to run again · style:${TSTYLE}`;
+      return; // freeze on the end state
+    }
+  }
+  stateEl.textContent = `wash · phase: ${phase} · t:${t.toFixed(1)}s\ntitle:ascii/${TSTYLE} shore:${Math.round(SHORE)} speed:${SPEED}x agit:${AGIT} fade:${FADE} recede:${RECEDE_S.toFixed(1)}s`;
+if (!scrubbing && scrubEl) scrubEl.value = t.toFixed(2); // playhead follows the run
+if (!stepping) rafId = requestAnimationFrame(frame);
+}
+
+function reset() { // replay: restart the timeline, keep dial values
+  t0 = performance.now(); lastNow = -1; t = 0;
+  playing = true; if (playBtn) playBtn.textContent = '⏸';
+  assetsLoaded = false; loadedAt = -1; breakT0 = -1; recedeT0 = -1; runY0 = null; runA0 = null; tHit = -1; fadeQ = 0;
+  titleLatched = null; revealed = false; done = false;
+  title.style.clipPath = ''; title.classList.add('ascii-live');
+  showreel.classList.remove('grow'); showreel.style.transform = '';
+  behind.style.clipPath = 'none';
+  syncToggles();
+  cancelAnimationFrame(rafId); // the loop stops scheduling at done, so restart it
+  rafId = requestAnimationFrame(frame);
+}
+document.getElementById('replay').onclick = () => reset();
+const playBtn = document.getElementById('playBtn'), scrubEl = document.getElementById('scrub');
+let playing = true, scrubbing = false;
+function liveMax() { return READY_S + LOOP_S + SWEEP_S + RECEDE_S + 2; }
+function paintScrubMax() { if (scrubEl) scrubEl.max = liveMax().toFixed(2); }
+function scrubTo(ts) { // deterministic re-simulation from t=0 (like ?shot=) — scrubbed frames are exact
+  cancelAnimationFrame(rafId);
+  t = 0; lastNow = -1;
+  assetsLoaded = false; loadedAt = -1; breakT0 = -1; recedeT0 = -1; runY0 = null; runA0 = null; tHit = -1; fadeQ = 0;
+  titleLatched = null; revealed = false; done = false;
+  title.style.clipPath = ''; title.classList.add('ascii-live');
+  showreel.classList.remove('grow'); showreel.style.transform = '';
+  behind.style.clipPath = 'none'; syncToggles();
+  stepping = true;
+  for (let ts2 = 0; ts2 <= ts + 1e-6; ts2 += 0.05) { t = Math.min(ts2, ts); lastNow = -1; frame(performance.now()); if (done) break; }
+  stepping = false;
+  cancelAnimationFrame(rafId);
+}
+playBtn.onclick = () => {
+  if (playing) { playing = false; playBtn.textContent = '▶'; cancelAnimationFrame(rafId); }
+  else { playing = true; playBtn.textContent = '⏸'; stepping = false; lastNow = -1; cancelAnimationFrame(rafId); rafId = requestAnimationFrame(frame); }
+};
+scrubEl.addEventListener('pointerdown', () => { scrubbing = true; });
+window.addEventListener('pointerup', () => { scrubbing = false; });
+scrubEl.addEventListener('input', () => { playing = false; playBtn.textContent = '▶'; scrubTo(parseFloat(scrubEl.value)); });
+const tstyleBtn = document.getElementById('tstyleBtn');
+const assetsBtn = document.getElementById('assetsBtn');
+const TSTYLES = ['mid', 'solid', 'foam']; // cycle order: the pick first, extremes for A/B
+function syncToggles() {
+  tstyleBtn.textContent = 'style:' + TSTYLE;
+  assetsBtn.textContent = breakT0 >= 0 ? 'outro:running' : assetsLoaded ? 'assets:loaded ✓' : 'assets:waiting';
+  title.classList.add('ascii-live');
+  qs.set('tstyle', TSTYLE);
+  history.replaceState(null, '', location.pathname + '?' + qs);
+}
+tstyleBtn.onclick = () => { TSTYLE = TSTYLES[(TSTYLES.indexOf(TSTYLE) + 1) % TSTYLES.length]; syncToggles(); reset(); };
+assetsBtn.onclick = () => { if (!assetsLoaded) { assetsLoaded = true; loadedAt = t; syncToggles(); } };
+let kit = null; // DialKit panel (vendored): curve graphs + dials, URL-synced for ?shot= links
+try {
+  DialKit.createDialRoot({ position: 'top-right' });
+  kit = DialKit.createDialKit('Wash', {
+    titleFade: { type: 'easing', duration: TITLE_DUR, ease: TITLE_EASE },
+    waterline: { type: 'easing', duration: SWEEP_S, ease: WATER_EASE },
+    recede: { type: 'easing', duration: RECEDE_S, ease: RECEDE_EASE },
+    speed: [SPEED, 0.1, 3, 0.05],
+    shore: [SHORE, 0, 320, 5],
+    loop: [LOOP_S, 1.5, 6, 0.1],
+    agit: [AGIT, 0, 2, 0.05],
+    grid: [GRID, 0.5, 2, 0.05],
+  }, { id: 'wash' });
+  kit.subscribe(v => {
+    TITLE_DUR = Math.max(0.5, v.titleFade.duration); TITLE_EASE = v.titleFade.ease.slice(0, 4);
+    SWEEP_S = Math.max(1, v.waterline.duration); WATER_EASE = v.waterline.ease.slice(0, 4);
+    RECEDE_S = Math.max(1, v.recede.duration); RECEDE_EASE = v.recede.ease.slice(0, 4);
+    SPEED = v.speed; SHORE = v.shore; LOOP_S = v.loop; AGIT = v.agit; GRID = v.grid;
+    qs.set('tease', TITLE_EASE.join(',')); qs.set('wease', WATER_EASE.join(','));
+    qs.set('tdur', TITLE_DUR.toFixed(2)); qs.set('sweep', SWEEP_S.toFixed(2)); qs.set('recede', RECEDE_S.toFixed(2));
+    qs.set('rease', RECEDE_EASE.join(','));
+    qs.set('speed', String(SPEED)); qs.set('shore', String(Math.round(SHORE)));
+    qs.set('loop', LOOP_S.toFixed(2)); qs.set('agit', String(AGIT)); qs.set('grid', GRID.toFixed(2)); paintScrubMax();
+    history.replaceState(null, '', location.pathname + '?' + qs);
+  });
+} catch (err) { /* panel optional: URL params still drive everything */ }
+syncToggles();
+reset();
+if (qs.has('shot')) { stepping = true; cancelAnimationFrame(rafId); const target = parseFloat(qs.get('shot')); const now0 = performance.now(); t0 = now0; lastNow = -1; for (let s = 0; s <= target; s += 100) frame(now0 + s); stepping = false; cancelAnimationFrame(rafId); }
+</script>
+</body>
+</html>

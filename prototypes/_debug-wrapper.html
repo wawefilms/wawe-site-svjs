@@ -1,0 +1,14 @@
+<!doctype html><html><body><div id="out">pending</div>
+<iframe id="f" src="/prototypes/prototype-intro-wash-ascii.html?p=1&shot=2500" width="1400" height="800"></iframe>
+<script>
+const out = document.getElementById('out');
+const f = document.getElementById('f');
+f.contentWindow.onerror = (m, s, l, c) => { out.textContent = 'IFRAME-ERR: ' + m + ' @' + l + ':' + c; };
+setTimeout(() => {
+  try {
+    const d = f.contentDocument;
+    const ids = [...d.querySelectorAll('div')].map(e => e.id || e.tagName).join(',');
+    out.textContent = 'DIVS=' + ids + ' BODYLEN=' + d.body.innerHTML.length;
+  } catch(e) { out.textContent = 'READ-ERR: ' + e.message; }
+}, 2500);
+</script></body></html>

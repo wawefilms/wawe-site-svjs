@@ -1,0 +1,193 @@
+<script lang="ts">
+	import { onMount, tick, untrack } from 'svelte';
+	import { flip } from 'svelte/animate';
+	import { fade } from 'svelte/transition';
+	import { cubicOut } from 'svelte/easing';
+	import { replaceState } from '$app/navigation';
+	import { page } from '$app/state';
+	import type { Client, Domain, Tag } from '$lib/payload-types';
+	import ProjectCard from '$lib/components/ProjectCard.svelte';
+	import ProjectFilters from '$lib/components/ProjectFilters.svelte';
+	import ProjectSortControl from './ProjectSort.svelte';
+	import { filterProjects, sortProjects, parseProjectQuery, projectQueryParams, type ProjectQuery, type ProjectSummary, type ProjectSort } from './model';
+	import { createSectionTransition, REORDER_DURATION } from './transitions';
+
+	let { projects, tags, domains, clients, initialQuery, unavailable = false, expandedRequested = false, onquerychange }: {
+		projects: ProjectSummary[]; tags: Tag[]; domains: Domain[]; clients: Client[];
+		initialQuery: ProjectQuery; unavailable?: boolean; expandedRequested?: boolean;
+		onquerychange?: (query: ProjectQuery) => void;
+	} = $props();
+	let query = $state<ProjectQuery>({ ...untrack(() => initialQuery) });
+	let selectedTag = $state<string | null>(untrack(() => initialQuery).tag === null ? '' : String(untrack(() => initialQuery).tag));
+	let selectedDomain = $state<string | null>(untrack(() => initialQuery).domain === null ? '' : String(untrack(() => initialQuery).domain));
+	let selectedSort = $state<ProjectSort>(untrack(() => initialQuery).sort);
+	let section: HTMLElement;
+	let content: HTMLDivElement;
+	let toggle = $state<HTMLAnchorElement>();
+	let heading: HTMLHeadingElement;
+	let pending = $state(false);
+	let reduced = $state(true);
+	let mounted = $state(false);
+	let generation = 0;
+	let transition: ReturnType<typeof createSectionTransition> | undefined;
+	const expanded = $derived(query.view === 'all' || projects.length <= 5);
+	const visible = $derived(expanded ? sortProjects(filterProjects(projects, query, clients), query.sort) : sortProjects(projects).slice(0, 5));
+	const context = $derived(`/${projectQueryParams(query).size ? `?${projectQueryParams(query)}` : ''}#projects`);
+	const toggleQuery = $derived<ProjectQuery>(expanded ? { view: 'highlighted', tag: null, domain: null, sort: 'highlighted' } : { view: 'all', tag: null, domain: null, sort: 'highlighted' });
+	const toggleHref = $derived(`/${projectQueryParams(toggleQuery).size ? `?${projectQueryParams(toggleQuery)}` : ''}#projects`);
+
+	function assign(next: ProjectQuery) {
+		query = { ...next };
+		selectedTag = next.tag === null ? '' : String(next.tag);
+		selectedDomain = next.domain === null ? '' : String(next.domain);
+		selectedSort = next.sort;
+	}
+	function announce(next: ProjectQuery) { onquerychange?.({ ...next }); }
+	function keepHeadingVisible() {
+		const top = heading.getBoundingClientRect().top;
+		const bar = parseFloat(getComputedStyle(section).scrollMarginTop);
+		// scrollIntoView honours the shared Projects scroll-margin (including actual bar height).
+		if (top < (Number.isFinite(bar) ? bar : 80) || top > window.innerHeight) section.scrollIntoView({ block: 'start', behavior: 'instant' });
+	}
+	async function change(next: ProjectQuery, writeURL = true) {
+		if (pending) return;
+		const collapsing = query.view === 'all' && next.view === 'highlighted';
+		if (collapsing && section.contains(document.activeElement) && document.activeElement !== toggle && document.activeElement !== heading) toggle?.focus({ preventScroll: true });
+		pending = true;
+		const version = ++generation;
+		try {
+			if (transition) await transition.run(() => assign(next), tick, reduced || document.hidden);
+			else { assign(next); await tick(); }
+			if (version !== generation) return;
+			if (writeURL) {
+				const url = new URL(page.url);
+				for (const key of ['view', 'tag', 'domain', 'sort']) url.searchParams.delete(key);
+				for (const [key, value] of projectQueryParams(next)) url.searchParams.set(key, value);
+				url.hash = 'projects';
+				replaceState(url, page.state);
+			}
+			announce(next);
+			if (collapsing) keepHeadingVisible();
+		} finally { pending = false; }
+	}
+	function submit(event: SubmitEvent) {
+		event.preventDefault();
+		const form = event.currentTarget as HTMLFormElement;
+		const params = new URLSearchParams();
+		for (const [key, value] of new FormData(form)) if (typeof value === 'string') params.append(key, value);
+		void change(parseProjectQuery(params, tags, domains));
+	}
+	function toggleView(event: MouseEvent) {
+		if (event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+		event.preventDefault();
+		void change(toggleQuery);
+	}
+
+	// SvelteKit may restore cached loader data after shallow updates. The live route URL
+	// is the authority for browser Back; initialQuery is only the SSR seed.
+	$effect(() => {
+		// Read page.url to react to SvelteKit navigation, but cached Page data/URL
+		// can precede the history entry. location is authoritative on this browser-only effect.
+		page.url;
+		const next = parseProjectQuery(new URL(location.href).searchParams, tags, domains);
+		untrack(() => {
+			if (next.view === query.view && next.tag === query.tag && next.domain === query.domain && next.sort === query.sort) return;
+			generation++; transition?.finish(); assign(next);
+		});
+	});
+	$effect(() => {
+		if (expandedRequested && mounted) untrack(() => {
+			if (query.view !== 'all') void change({ ...query, view: 'all' });
+		});
+	});
+	onMount(() => {
+		mounted = true;
+		const preference = matchMedia('(prefers-reduced-motion: reduce)');
+		const motion = () => { reduced = preference.matches; if (reduced) transition?.finish(); };
+		motion();
+		transition = createSectionTransition(section, content);
+		const resize = new ResizeObserver(() => transition?.layoutChanged());
+		resize.observe(content);
+		const layout = () => transition?.layoutChanged();
+		const visibility = () => { if (document.hidden) transition?.finish(); };
+		document.addEventListener('visibilitychange', visibility);
+		const restore = () => { generation++; transition?.finish(); assign(parseProjectQuery(new URL(location.href).searchParams, tags, domains)); announce(query); };
+		window.addEventListener('popstate', restore);
+		window.addEventListener('resize', layout);
+		preference.addEventListener('change', motion);
+		document.fonts?.addEventListener('loadingdone', layout);
+		return () => {
+			generation++;
+			transition?.dispose(); resize.disconnect();
+			window.removeEventListener('popstate', restore); window.removeEventListener('resize', layout);
+			preference.removeEventListener('change', motion); document.fonts?.removeEventListener('loadingdone', layout);
+			document.removeEventListener('visibilitychange', visibility);
+		};
+	});
+</script>
+
+<section id="projects" class="site-container projects" bind:this={section} aria-labelledby="projects-title">
+	<div class="projects-content" bind:this={content}>
+		<header>
+			<div class="heading-copy">
+			<h2 id="projects-title" class="site-heading" bind:this={heading} tabindex="-1">{expanded ? 'All Projects' : 'Highlighted Projects'}</h2>
+			{#if !unavailable}<span class="count" aria-live="polite">{visible.length} / {projects.length}</span>{/if}
+			</div>
+			{#if projects.length > 5}
+				<div class="toggle-row">
+					<a class="toggle" bind:this={toggle} href={toggleHref} onclick={toggleView} aria-controls="project-grid" aria-expanded={expanded} aria-disabled={pending}>{expanded ? 'Show five highlights' : 'View all projects'}</a>
+					{#if expanded}<p>Collapsing resets filters and sorting.</p>{/if}
+				</div>
+			{/if}
+		</header>
+		{#if unavailable}
+			<p class="empty">Projects are temporarily unavailable. <a href="/contact">Contact us</a> to discuss your film.</p>
+		{:else if !projects.length}
+			<p class="empty">There are no Projects to show yet. <a href="/contact">Contact us</a>.</p>
+		{:else}
+			{#if expanded}
+				<form method="GET" action="/#projects" onsubmit={submit} aria-label="Filter and sort Projects">
+					<input type="hidden" name="view" value="all" />
+					<ProjectFilters {tags} {domains} bind:selectedTag bind:selectedDomain disabled={pending} />
+					<ProjectSortControl bind:value={selectedSort} disabled={pending} />
+					<button type="submit" disabled={pending}>Apply</button>
+					{#if query.tag !== null || query.domain !== null}
+						<a class="clear" href={`/?${projectQueryParams({ ...query, tag: null, domain: null })}#projects`} onclick={(event) => { if (!event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); void change({ ...query, tag: null, domain: null }); } }}>Clear filters</a>
+					{/if}
+				</form>
+			{/if}
+			<div id="project-grid" class="grid">
+				{#each visible as project (project.id)}
+					<div class="grid-item" data-project-id={project.id} animate:flip={{ duration: reduced ? 0 : REORDER_DURATION, easing: cubicOut }} in:fade={{ duration: reduced ? 0 : 160 }}>
+						<ProjectCard {project} returnTo={context} />
+					</div>
+				{/each}
+			</div>
+			{#if !visible.length}
+				<p class="empty" role="status">No Projects match these filters. Clear the filters to explore the catalogue.</p>
+			{/if}
+		{/if}
+	</div>
+</section>
+
+<style>
+	.projects { margin-block: var(--section-space); color: var(--color-surface-text); }
+	.projects-content { display: flow-root; }
+	header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1.5rem; margin-bottom: clamp(2rem, 4vw, 4rem); }
+	h2 { margin: 0; font-size: clamp(2.5rem, 4vw, 4.5rem); max-width: 12ch; }
+	.heading-copy { display: flex; align-items: end; justify-content: space-between; gap: 1rem; flex: 1 1 22rem; min-width: 0; }
+	.count { color: var(--color-surface-muted); font-variant-numeric: tabular-nums; white-space: nowrap; padding-bottom: .25rem; }
+	form { display: flex; align-items: end; flex-wrap: wrap; gap: 1rem; margin-bottom: 2.5rem; }
+	form :global(label) { flex: 1 1 12rem; }
+	button, .toggle { min-height: 44px; border: 1px solid var(--color-paper); border-radius: .4rem; padding: .75rem 1.25rem; background: var(--color-paper); color: var(--color-midnight); font: inherit; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+	button:disabled, .toggle[aria-disabled='true'] { opacity: .55; cursor: wait; }
+	.clear { min-height: 44px; display: inline-flex; align-items: center; color: inherit; }
+	.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(2rem, 4vw, 4rem) clamp(1rem, 2vw, 2rem); }
+	.grid-item { min-width: 0; }
+	.toggle-row { display: grid; justify-items: end; gap: .5rem; flex-shrink: 0; }
+	.toggle-row p { font-size: .875rem; color: var(--color-surface-muted); margin: 0; }
+	.empty { color: var(--color-surface-muted); max-width: 65ch; line-height: 1.6; margin: 2rem 0; }
+	.empty a { color: var(--color-paper); }
+	@media (max-width: 1000px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+	@media (max-width: 560px) { .grid { grid-template-columns: minmax(0, 1fr); } header { align-items: start; } .toggle-row { justify-items: start; } .count { padding-top: .5rem; } }
+</style>

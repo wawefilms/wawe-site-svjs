@@ -95,8 +95,12 @@ export interface Config {
     defaultIDType: number;
   };
   fallbackLocale: null;
-  globals: {};
-  globalsSelect: {};
+  globals: {
+    showreel: Showreel;
+  };
+  globalsSelect: {
+    showreel: ShowreelSelect<false> | ShowreelSelect<true>;
+  };
   locale: null;
   widgets: {
     collections: CollectionsWidget;
@@ -248,7 +252,6 @@ export interface Media {
    * Optional smaller/compressed version of this file (e.g. a converted .webm, or a 1080p downscale). Served first by the site as the preferred/smaller source.
    */
   smallFile?: (number | null) | Media;
-  prefix?: string | null;
   updatedAt: string;
   createdAt: string;
   url?: string | null;
@@ -445,7 +448,6 @@ export interface MediaSelect<T extends boolean = true> {
   alt?: T;
   Title?: T;
   smallFile?: T;
-  prefix?: T;
   updatedAt?: T;
   createdAt?: T;
   url?: T;
@@ -506,6 +508,61 @@ export interface PayloadMigrationsSelect<T extends boolean = true> {
   batch?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * Manage the Showreel video and its Project timeline independently from the Project catalogue.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "showreel".
+ */
+export interface Showreel {
+  id: number;
+  /**
+   * Upload or select the master Showreel video. Then import its Project timestamps below. Imported cues do not change homepage playback automatically.
+   */
+  video: number | Media;
+  /**
+   * Cover frame shown before playback starts.
+   */
+  poster?: (number | null) | Media;
+  /**
+   * Review imported cues or edit them manually. Use chronological, non-overlapping ranges in seconds; gaps and repeated Projects are allowed.
+   */
+  cues?:
+    | {
+        project: number | Project;
+        /**
+         * Seconds into the showreel where this project segment begins.
+         */
+        start: number;
+        /**
+         * Seconds where this segment ends (next cue should start here).
+         */
+        end: number;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "showreel_select".
+ */
+export interface ShowreelSelect<T extends boolean = true> {
+  video?: T;
+  poster?: T;
+  cues?:
+    | T
+    | {
+        project?: T;
+        start?: T;
+        end?: T;
+        id?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

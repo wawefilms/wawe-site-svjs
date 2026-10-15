@@ -1,5 +1,8 @@
 import { env } from '$env/dynamic/private';
 import type { Client, Domain, Media, Project, Tag } from '../payload-types';
+import { fetchCMS } from './cms-fetch';
+import { sortProjects } from '../projects/model';
+import { clientLogoSource } from '../media/client-logo';
 
 const API = env.PAYLOAD_API_URL ?? 'http://localhost:3000';
 
@@ -7,36 +10,31 @@ function api(path: string) {
 	return `${API}/api${path}`;
 }
 
-export async function getProjects(): Promise<Project[]> {
-	try {
-		const res = await fetch(api('/projects?limit=999&depth=2'), {
-			// Cache per request (SvelteKit load reuses server response before hydration)
-			// Production pages will revalidate per deploy + CF purge hook.
-		});
-		if (!res.ok) {
-			console.warn('Failed to fetch projects from Payload REST', res.status);
-			return [];
-		}
-		const data = (await res.json()) as { docs?: Project[] };
-		let docs: Project[] = data.docs ?? [];
+export interface ProjectCatalogue {
+	projects: Project[];
+	unavailable: boolean;
+}
 
-		// Sort by priority (lowest-first per collection description), then newest
-		docs.sort((a, b) => {
-			const aP = a.priority ?? Infinity;
-			const bP = b.priority ?? Infinity;
-			if (aP !== bP) return aP - bP;
-			return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-		});
-		return docs;
-	} catch (err) {
-		console.error('Error fetching projects via REST:', err);
-		return [];
+/** Keep an unavailable upstream distinct from a successfully empty catalogue. */
+export async function getProjectCatalogue(): Promise<ProjectCatalogue> {
+	try {
+		const res = await fetchCMS(api('/projects?limit=999&depth=2'));
+		if (!res.ok) return { projects: [], unavailable: true };
+		const data = (await res.json()) as { docs?: Project[] };
+		if (!Array.isArray(data.docs)) return { projects: [], unavailable: true };
+		return { projects: sortProjects(data.docs), unavailable: false };
+	} catch {
+		return { projects: [], unavailable: true };
 	}
+}
+
+export async function getProjects(): Promise<Project[]> {
+	return (await getProjectCatalogue()).projects;
 }
 
 export async function getProjectBySlug(slug: string): Promise<Project | null> {
 	try {
-		const res = await fetch(
+		const res = await fetchCMS(
 			api(`/projects?where[slug][equals]=${encodeURIComponent(slug)}&limit=1&depth=2`)
 		);
 		if (!res.ok) {
@@ -53,10 +51,15 @@ export async function getProjectBySlug(slug: string): Promise<Project | null> {
 
 export async function getClients(): Promise<Client[]> {
 	try {
-		const res = await fetch(api('/clients?limit=999&depth=1'));
+		const res = await fetchCMS(api('/clients?limit=999&depth=1'));
 		if (!res.ok) return [];
 		const data = (await res.json()) as { docs?: Client[] };
-		return data.docs ?? [];
+		return (data.docs ?? []).map(client => {
+			const logo = client.logo;
+			return logo && typeof logo === 'object' && logo.url && clientLogoSource(logo.url, logo.mimeType ?? '', API)
+				? { ...client, logo: { ...logo, url: `/api/client-logo/${client.id}?asset=${logo.id}` } }
+				: client;
+		});
 	} catch {
 		return [];
 	}
@@ -64,7 +67,7 @@ export async function getClients(): Promise<Client[]> {
 
 export async function getTags(): Promise<Tag[]> {
 	try {
-		const res = await fetch(api('/tags?limit=999'));
+		const res = await fetchCMS(api('/tags?limit=999'));
 		if (!res.ok) return [];
 		const data = (await res.json()) as { docs?: Tag[] };
 		return data.docs ?? [];
@@ -79,7 +82,7 @@ export async function getShowreel(): Promise<{
 		cues: { slug: string; start: number; end: number }[];
 	} | null> {
 	try {
-		const res = await fetch(api('/globals/showreel?depth=2'));
+		const res = await fetchCMS(api('/globals/showreel?depth=2'));
 		if (!res.ok) return null;
 		const data = (await res.json()) as {
 			video?: { url?: string; smallFile?: { url?: string } } | null;
@@ -101,7 +104,7 @@ export async function getShowreel(): Promise<{
 
 export async function getDomains(): Promise<Domain[]> {
 	try {
-		const res = await fetch(api('/domains?limit=999'));
+		const res = await fetchCMS(api('/domains?limit=999'));
 		if (!res.ok) return [];
 		const data = (await res.json()) as { docs?: Domain[] };
 		return data.docs ?? [];

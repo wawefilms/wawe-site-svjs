@@ -1,0 +1,6 @@
+@import '../ascii-surge/style.css';
+@font-face{font-family:'Pilcrow Rounded';src:url('/fonts/PilcrowRounded-Semibold.woff2') format('woff2');font-weight:600;font-display:swap}
+header{top:max(12px,env(safe-area-inset-top));left:5.2vw;display:flex;gap:18px;font-size:9px;z-index:2}
+body[data-scene-visible='true'] header{display:none}
+.dialkit-panel{max-height:calc(100svh - 32px)}
+@media(max-width:699px){header{left:18px;font-size:8px;gap:12px}}

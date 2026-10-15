@@ -1,0 +1,13 @@
+{
+  "asset": "static/og/wawe-films.png",
+  "dimensions": [
+    1200,
+    630
+  ],
+  "mimeType": "image/png",
+  "source": "src/lib/landing/assets/badge-mask.png",
+  "sourceSha256": "c1df07ca9016cea7fbd08d19c6a36758697ffedd05565031892093f1d1a4845e",
+  "assetSha256": "ea6f830f64891a3ed02fe9dbf01bb59e30acfab3241c39d4b2c0780ab64244bb",
+  "method": "Python Pillow: existing badge grayscale mask, proportional LANCZOS thumbnail bounded to 480x480, warm-paper #f1eadf foreground centered on #040e19 background; no added text or claims.",
+  "artworkHistory": "Existing WAWE badge mask; prototype mask preparation is documented in prototypes/ascii-opening/make-masks.py (alpha extraction from logo-source.png)."
+}

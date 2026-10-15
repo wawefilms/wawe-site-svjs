@@ -1,4 +1,28 @@
 @import "tailwindcss";
+/* Self-hosted type — Pilcrow Rounded variable (wght 400–900) + static woff2 fallbacks;
+   Archivo variable (wght 100–900, wdth 62–125) as woff2. Shipped whole, never subset. */
+@font-face {
+  font-family: "Pilcrow Rounded";
+  src: url("/fonts/PilcrowRounded-Variable.ttf") format("truetype-variations");
+  font-weight: 400 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Archivo";
+  src: url("/fonts/Archivo-Variable.woff2") format("woff2-variations");
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Archivo Narrow";
+  src: url("/fonts/ArchivoNarrow-Variable.woff2") format("woff2");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
 
 /* WAWE design tokens — code-first source of truth (see docs/design-system.md).
    Brand palette sampled from the logo artwork (see palette board 02-COLOUR).
@@ -18,9 +42,13 @@
   --color-wash-mist: color-mix(in srgb, var(--color-wash) 16%, var(--color-paper));
   --color-wawe-mist: color-mix(in srgb, var(--color-wawe) 12%, var(--color-paper));
 
-  /* Type: display rounded (Pangram Sans Rounded — trial now, license before launch),
-     body/UI Archivo SemiCondensed (Google Fonts variable, font-stretch: 87.5%) */
-  --font-display: "Pangram Sans Rounded", "Pilcrow", ui-rounded, "SF Pro Rounded", system-ui, sans-serif;
+  /* Type: display Pilcrow Rounded (ITF Fontshare, FFL — self-hosted whole files), body/UI Archivo variable (self-hosted woff2, wdth 62–125) */
+  --font-display: "Pilcrow Rounded", ui-rounded, "SF Pro Rounded", system-ui, sans-serif;
+  /* Simple Showreel route family; accepted ASCII opening retains its own font. */
+  --font-heading: "Archivo Narrow", "Archivo", sans-serif;
+  --color-midnight: #040e19;
+  --color-surface-text: #f0e3d1;
+  --color-surface-muted: #bdb8ac;
   --font-sans: "Archivo", "Helvetica Neue", Helvetica, Arial, sans-serif;
 
   /* Motion: constant sweeps stay linear; easing curves are an open item (intro prototype). */
@@ -30,4 +58,40 @@
 /* Archivo SemiCondensed: MS SemiCondensed = 87.5% width on the variable wdth axis */
 .stretch-semi {
   font-stretch: 87.5%;
+}
+
+/* Shared simple-showreel composition: code-first per ADR-0002.
+   Scoped replacement of ADR-0003's paper/rounded display; not an intro recolour. */
+:root {
+  --site-gutter: clamp(1.25rem, 5.2vw, 6rem);
+  --site-width: 112rem;
+  --bar-height: clamp(5rem, 9vw, 8rem);
+  --film-radius: 1rem;
+  --section-space: clamp(4rem, 8vw, 9rem);
+  --ease-reveal: cubic-bezier(.22, 1, .36, 1);
+  --duration-expand: 320ms;
+  --duration-reorder: 240ms;
+  --duration-menu: 200ms;
+}
+.site-shell {
+  background: var(--color-midnight);
+  color: var(--color-surface-text);
+  font-family: var(--font-sans);
+  color-scheme: dark;
+  min-height: 100svh;
+  accent-color: var(--color-paper);
+  scrollbar-color: var(--color-surface-muted) var(--color-midnight);
+}
+.site-container { width: min(calc(100% - 2 * var(--site-gutter)), var(--site-width)); margin-inline: auto; }
+.site-heading { font-family: var(--font-heading); font-weight: 600; line-height: 1.08; text-wrap: balance; }
+.site-shell h1 { font-family: var(--font-heading); font-size: clamp(2.75rem, 6vw, 6rem); line-height: 1.04; text-wrap: balance; }
+.site-shell :is(h2, h3) { font-family: var(--font-heading); }
+.site-shell :is(a, button, input, textarea, select):focus-visible { outline: 2px solid var(--color-paper); outline-offset: 5px; }
+.site-shell ::selection { background: var(--color-paper); color: var(--color-midnight); }
+.site-shell :is(input, textarea) { caret-color: var(--color-paper); }
+.site-shell :is(input, textarea)::placeholder { color: var(--color-surface-muted); opacity: 1; }
+.site-shell a { text-underline-offset: .2em; }
+.site-shell :is(#projects, #contact, #showreel) { scroll-margin-top: calc(var(--bar-height) + 1rem); }
+@media (prefers-reduced-motion: reduce) {
+  .site-shell { scroll-behavior: auto; }
 }

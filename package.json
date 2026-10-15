@@ -3,34 +3,47 @@
 	"private": true,
 	"version": "0.0.1",
 	"type": "module",
+	"packageManager": "pnpm@10.34.6",
+	"engines": {
+		"node": ">=24.20.0 <25"
+	},
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"test:landing": "node --experimental-strip-types --test src/lib/landing/landing.test.ts",
+		"test": "node --experimental-strip-types --test src/lib/*/*.test.ts",
+		"test:browser": "node scripts/test-simple-showreel-browser.mjs",
+		"build:workers": "pnpm check && pnpm test && pnpm build",
+		"preview:workers": "wrangler dev --local",
+		"check:workers": "wrangler deploy --dry-run",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
 	},
 	"devDependencies": {
-		"@sveltejs/adapter-auto": "^7.0.1",
+		"@sveltejs/adapter-cloudflare": "7.2.9",
 		"@sveltejs/kit": "^2.63.0",
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",
 		"@tailwindcss/vite": "^4.3.3",
 		"@types/node": "^26.3.0",
 		"@types/react": "^19.2.18",
 		"@types/react-dom": "^19.2.5",
+		"@types/sanitize-html": "^2.16.2",
 		"@types/three": "^0.185.4",
 		"svelte": "^5.56.1",
 		"svelte-check": "^4.6.0",
 		"tailwindcss": "^4.3.3",
 		"typescript": "^6.0.3",
-		"vite": "^8.0.16"
+		"vite": "^8.0.16",
+		"wrangler": "4.147.0"
 	},
 	"dependencies": {
 		"gsap": "^3.15.0",
 		"react": "^19.2.8",
 		"react-dom": "^19.2.8",
 		"resend": "^6.24.0",
+		"sanitize-html": "^2.18.0",
 		"three": "^0.185.1",
 		"zod": "^4.4.3"
 	}
