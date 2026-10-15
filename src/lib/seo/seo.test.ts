@@ -23,6 +23,13 @@ test('explicit public HTTPS origin and indexing configuration', () => {
 	assert.throws(() => routeURL(origin, 'project', '..'));
 });
 
+test('checked-in Cloudflare Worker vars satisfy the SSR site configuration contract', async () => {
+	const config = JSON.parse(await readFile(new URL('../../../wrangler.jsonc', import.meta.url), 'utf8'));
+	const site = siteConfiguration(config.vars);
+	assert.equal(site.siteURL, origin);
+	assert.ok(site.indexing === 'index' || site.indexing === 'noindex');
+});
+
 test('poster safety: MIME and allowed public upstream, never film as OG', () => {
 	const poster = { id: 2, createdAt: project.createdAt, updatedAt: project.updatedAt, url: 'https://media.wawefilms.com/media/still.webp', mimeType: 'image/webp', width: 900, height: 600, alt: 'Actual still' };
 	assert.equal(posterShareImage(poster, project.title)?.url, poster.url);
