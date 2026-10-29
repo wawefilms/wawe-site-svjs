@@ -6,11 +6,13 @@
 	import AsciiIntro from './AsciiIntro.svelte';
 	import { createPlaybackPolicy } from './playback';
 	import { heroSource } from './sources';
+	import type { Artwork } from './readiness';
 
 	import { safeCaptionTracks, SHOWREEL_CAPTIONS, type CaptionTrack } from '$lib/media/captions';
-	let { showreel, projects, onactiveproject, onratiochange, captions = SHOWREEL_CAPTIONS }: {
+	let { showreel, projects, onactiveproject, onratiochange, artworks = [], captions = SHOWREEL_CAPTIONS }: {
 		showreel: { videoUrl: string | null; posterUrl: string | null; cues: ShowreelCue[] } | null;
 		projects: ProjectSummary[];
+		artworks?: readonly Artwork[];
 		captions?: readonly CaptionTrack[];
 		onactiveproject?: (project: ProjectSummary | null) => void;
 		onratiochange?: (ratio: number) => void;
@@ -151,7 +153,7 @@
 		{/key}
 	</div>
 	{#key source}
-		{#if mounted && video && host}<AsciiIntro {video} {host} />{/if}
+		{#if mounted && video && host}<AsciiIntro {video} {host} {artworks} />{/if}
 	{/key}
 	{#if failed}
 		<div class="playback"><p>Showreel unavailable. <a href={source}>Open video</a> or <a href="#projects">browse Projects</a>.</p></div>
@@ -161,20 +163,20 @@
 
 <style>
 	section { position: relative; margin-block: 0; }
-	.film { position: relative; width: 100%; margin-inline: auto; overflow: hidden; border-radius: 0 0 var(--film-radius) var(--film-radius); background: var(--color-midnight); }
-	video { display: block; width: 100%; height: 100%; object-fit: contain; background: var(--color-midnight); }
-	.film-toggle { position: absolute; inset: 0; display: grid; place-items: center; width: 100%; height: 100%; padding: 0; border: 0; background: transparent; color: var(--color-paper); cursor: pointer; touch-action: manipulation; }
-	.play-mark { display: grid; place-items: center; width: 4rem; height: 4rem; border-radius: 50%; background: var(--color-midnight); }
+	.film { position: relative; width: 100%; margin-inline: auto; overflow: hidden; border-radius: 0 0 var(--film-radius) var(--film-radius); background: var(--color-surface); }
+	video { display: block; width: 100%; height: 100%; object-fit: contain; background: var(--color-surface); }
+	.film-toggle { position: absolute; inset: 0; display: grid; place-items: center; width: 100%; height: 100%; padding: 0; border: 0; background: transparent; color: var(--color-surface-text); cursor: pointer; touch-action: manipulation; }
+	.play-mark { display: grid; place-items: center; width: 4rem; height: 4rem; border-radius: 50%; background: var(--color-surface); }
 	.play-mark svg { width: 2rem; height: 2rem; }
 	.film-tools { position: absolute; bottom: 1rem; right: 1rem; display: flex; align-items: center; gap: .5rem; }
-	.mute-toggle, select { min-height: 44px; border: 0; border-radius: .4rem; background: var(--color-midnight); color: var(--color-paper); cursor: pointer; touch-action: manipulation; }
+	.mute-toggle, select { min-height: 44px; border: 0; border-radius: .4rem; background: var(--color-surface); color: var(--color-surface-text); cursor: pointer; touch-action: manipulation; }
 	.mute-toggle { width: 44px; display: grid; place-items: center; }
 	.mute-toggle svg { width: 24px; height: 24px; }
-	select { padding: .5rem; font: inherit; }
-	button:focus-visible, select:focus-visible { outline: 2px solid var(--color-paper); outline-offset: -5px; }
+	select { padding: .5rem; font: var(--type-control); }
+	button:focus-visible, select:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -5px; }
 	button:disabled { cursor: not-allowed; opacity: .6; }
-	.playback { position: absolute; top: 1rem; left: 1rem; max-width: calc(100% - 2rem); display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; padding: .25rem; border-radius: .4rem; background: var(--color-midnight); color: var(--color-surface-text); font-size: .875rem; }
-	a:focus-visible { outline: 2px solid var(--color-paper); outline-offset: 4px; }
+	.playback { position: absolute; top: 1rem; left: 1rem; max-width: calc(100% - 2rem); display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; padding: .25rem; border-radius: .4rem; background: var(--color-surface); color: var(--color-surface-text); font: var(--type-body); }
+	a:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 4px; }
 	p { margin: 0; color: var(--color-surface-muted); }
-	a { color: var(--color-paper); text-decoration: underline; text-underline-offset: .2em; }
+	a { color: var(--color-surface-text); text-decoration: underline; text-underline-offset: .2em; }
 </style>

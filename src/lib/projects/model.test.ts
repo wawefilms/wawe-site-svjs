@@ -85,7 +85,7 @@ test('Official client artwork follows verified relationships only and CMS artwor
 	assert.equal(projectIdentity(project(2, { title: 'Razorpay film', clients: [] }), [razorpay]).clients.length, 0);
 	assert.equal(projectIdentity(project(2, { clients: [client(2, { title: 'constructor' })] })).clients[0].logoUrl, null);
 	const logo = { id: 20, url: 'https://media.wawefilms.com/media/razorpay.webp', mimeType: 'image/webp', createdAt: '', updatedAt: '' };
-	assert.equal(projectIdentity(linked, [client(1, { title: 'Razorpay', logo })]).clients[0].logoUrl, `/api/landing-media?src=${encodeURIComponent(logo.url)}`);
+	assert.equal(projectIdentity(linked, [client(1, { title: 'Razorpay', logo })]).clients[0].logoUrl, logo.url);
 	assert.equal(projectIdentity(null, [razorpay]).clients.length, 0);
 });
 

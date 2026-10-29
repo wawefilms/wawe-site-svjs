@@ -10,13 +10,54 @@
       "surface-muted": { "role": "neutral", "displayName": "Muted Stone" }
     },
     "typographyMeta": {
-      "heading": { "displayName": "Shared heading", "purpose": "Archivo Narrow site-heading declarations." },
-      "page-title": { "displayName": "Shared H1", "purpose": "Global shared-shell H1 declarations; Project also has local declarations." },
-      "archive-title": { "displayName": "Archive title", "purpose": "Highlighted Projects / All Projects." },
-      "card-title": { "displayName": "Project card title", "purpose": "Real Project title." },
-      "body": { "displayName": "Reading / UI", "purpose": "Inherited Archivo stack, no invented global size or weight." },
-      "card-description": { "displayName": "Card description", "purpose": "Supplied description, two-line clamp." },
-      "field": { "displayName": "Contact field", "purpose": "16px contact inputs and textarea." }
+      "heading": { "displayName": "Shared heading helper", "purpose": "Retained .site-heading family/600/1.08 helper; use a named complete style for size." },
+      "page-title": { "displayName": "Shared H1", "purpose": "Shared-shell H1 including Contact and Project detail; --type-page-title." },
+      "archive-title": { "displayName": "Archive title", "purpose": "Highlighted Projects / All Projects and Contact CTA; --type-section-title." },
+      "card-title": { "displayName": "Project card title", "purpose": "Real Project title; --type-card-title, Archivo Narrow 600." },
+      "subheading": { "displayName": "Subheading", "purpose": "Project prose H2–H4 and related work; --type-subheading." },
+      "navigation": { "displayName": "Navigation", "purpose": "Identity and Menu trigger; --type-navigation." },
+      "menu": { "displayName": "Menu links", "purpose": "Disclosure links; --type-menu." },
+      "body": { "displayName": "Reading / UI", "purpose": "--type-body: Archivo 400, 1rem (16px at default root), leading 1.6." },
+      "body-large": { "displayName": "Large body", "purpose": "Project clients and introductory description; --type-body-large." },
+      "card-description": { "displayName": "Card description", "purpose": "--type-body: Archivo 400, 1rem/1.6; supplied description, two-line clamp, 65ch maximum." },
+      "field": { "displayName": "Contact field", "purpose": "--type-body: Archivo 400, 1rem/1.6; 16px at default root." },
+      "label": { "displayName": "Field label", "purpose": "Contact and filter/sort labels; --type-label." },
+      "caption": { "displayName": "Caption", "purpose": "Counts, fallback copy, tags, figcaptions and footer; --type-caption." },
+      "control": { "displayName": "Control", "purpose": "Buttons, CTA, selects, back and footer links; --type-control." }
+    },
+    "textStyles": {
+      "source": "src/app.css :root; apply font: var(--type-<role>) without ad hoc family/weight/size/leading overrides. Preview fallbacks reproduce each role without requiring app.css.",
+      "headingFamily": "\"Archivo Narrow\", \"Archivo\", sans-serif",
+      "bodyFamily": "\"Archivo\", \"Helvetica Neue\", Helvetica, Arial, sans-serif",
+      "roles": {
+        "page-title": "600 clamp(2.75rem, 6vw, 6rem) / 1.04 var(--font-heading)",
+        "section-title": "600 clamp(2.5rem, 4vw, 4.5rem) / 1.08 var(--font-heading)",
+        "card-title": "600 clamp(1.5rem, 2.2vw, 2rem) / 1.12 var(--font-heading)",
+        "subheading": "600 2rem / 1.2 var(--font-heading)",
+        "navigation": "600 clamp(1.25rem, 2vw, 1.75rem) / 1.2 var(--font-heading)",
+        "menu": "600 1.75rem / 1.2 var(--font-heading)",
+        "body": "400 1rem / 1.6 var(--font-sans)",
+        "body-large": "400 1.125rem / 1.6 var(--font-sans)",
+        "label": "500 .875rem / 1.4 var(--font-sans)",
+        "caption": "400 .875rem / 1.5 var(--font-sans)",
+        "control": "500 1rem / 1.4 var(--font-sans)"
+      },
+      "aliases": { "archive-title": "section-title", "card-description": "body", "field": "body" },
+      "scope": "Local shared-shell implementation; ASCII Plex type/palette/calculations unchanged. Prototype hierarchy readiness remains proposed, not canonical approval or evidence of full release or production deployment."
+    },
+    "colorStyles": {
+      "source": "src/app.css @theme; semantic aliases/mixes only, no new hues.",
+      "roles": {
+        "surface": "var(--color-midnight)",
+        "surface-raised": "color-mix(in srgb, var(--color-paper) 8%, var(--color-midnight))",
+        "surface-text": "var(--color-paper)",
+        "surface-muted": "#bdb8ac",
+        "border": "color-mix(in srgb, var(--color-paper) 20%, transparent)",
+        "border-control": "color-mix(in srgb, var(--color-paper) 35%, transparent)",
+        "action": "var(--color-paper)",
+        "on-action": "var(--color-midnight)",
+        "focus": "var(--color-paper)"
+      }
     },
     "shadows": [
       { "name": "menu-panel", "value": "0 1rem 2rem rgb(0 0 0 / .3)", "purpose": "Anchored navigation panel only." }
@@ -43,7 +84,7 @@
       "refersTo": "archive-action",
       "description": "Apply button translation; no fabricated hover state. Runtime pending state remains in Svelte.",
       "html": "<button class=\"ds-archive-action\" type=\"button\">Apply</button>",
-      "css": ".ds-archive-action { min-height:44px; border:1px solid var(--color-paper,#f0e3d1); border-radius:.4rem; padding:.75rem 1.25rem; background:var(--color-paper,#f0e3d1); color:var(--color-midnight,#040e19); font:inherit; font-family:var(--font-sans,Archivo,sans-serif); text-decoration:none; display:inline-flex; align-items:center; justify-content:center; } .ds-archive-action:focus-visible { outline:2px solid var(--color-paper,#f0e3d1); outline-offset:5px; } .ds-archive-action:disabled { opacity:.55; cursor:wait; }"
+      "css": ".ds-archive-action { min-height:44px; border:1px solid var(--color-action,#f0e3d1); border-radius:.4rem; padding:.75rem 1.25rem; background:var(--color-action,#f0e3d1); color:var(--color-on-action,#040e19); font:var(--type-control,500 1rem / 1.4 var(--font-sans,Archivo,'Helvetica Neue',Helvetica,Arial,sans-serif)); text-decoration:none; display:inline-flex; align-items:center; justify-content:center; } .ds-archive-action:focus-visible { outline:2px solid var(--color-focus,#f0e3d1); outline-offset:5px; } .ds-archive-action:disabled { opacity:.55; cursor:wait; }"
     },
     {
       "name": "Contact submit",
@@ -51,7 +92,7 @@
       "refersTo": "contact-submit",
       "description": "Contact's filled pill; disabled when unavailable or submitting. Preview never sends mail.",
       "html": "<button class=\"ds-contact-submit\" type=\"button\">Send message</button>",
-      "css": ".ds-contact-submit { min-height:48px; padding:.8rem 1.75rem; background:var(--color-paper,#f0e3d1); color:var(--color-midnight,#040e19); border:0; border-radius:999px; cursor:pointer; font-family:var(--font-sans,Archivo,sans-serif); } .ds-contact-submit:disabled { opacity:.6; cursor:not-allowed; } .ds-contact-submit:focus-visible { outline:2px solid var(--color-paper,#f0e3d1); outline-offset:5px; } @media (hover:hover) { .ds-contact-submit:not(:disabled):hover { text-decoration:underline; text-underline-offset:.2em; } }"
+      "css": ".ds-contact-submit { min-height:48px; padding:.8rem 1.75rem; background:var(--color-action,#f0e3d1); color:var(--color-on-action,#040e19); border:0; border-radius:999px; cursor:pointer; font:var(--type-control,500 1rem / 1.4 var(--font-sans,Archivo,'Helvetica Neue',Helvetica,Arial,sans-serif)); } .ds-contact-submit:disabled { opacity:.6; cursor:not-allowed; } .ds-contact-submit:focus-visible { outline:2px solid var(--color-focus,#f0e3d1); outline-offset:5px; } @media (hover:hover) { .ds-contact-submit:not(:disabled):hover { text-decoration:underline; text-underline-offset:.2em; } }"
     },
     {
       "name": "Contact link",
@@ -59,7 +100,7 @@
       "refersTo": "contact-link",
       "description": "Existing outlined CTA with its original inline arrow SVG.",
       "html": "<a class=\"ds-contact-link\" href=\"/contact\">Get in touch <svg aria-hidden=\"true\" viewBox=\"0 0 24 24\" width=\"24\" height=\"24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><path d=\"M4 12h16M13 5l7 7-7 7\" /></svg></a>",
-      "css": ".ds-contact-link { display:inline-flex; align-items:center; gap:1.5rem; min-height:48px; padding:.8rem 1.5rem; border:1px solid currentColor; border-radius:999px; font-size:1rem; font-family:var(--font-sans,Archivo,sans-serif); color:var(--color-surface-text,#f0e3d1); text-decoration:none; flex-shrink:0; } .ds-contact-link:focus-visible { outline:2px solid var(--color-paper,#f0e3d1); outline-offset:5px; } @media (hover:hover) { .ds-contact-link:hover { background:var(--color-paper,#f0e3d1); color:var(--color-midnight,#040e19); } }"
+      "css": ".ds-contact-link { display:inline-flex; align-items:center; gap:1.5rem; min-height:48px; padding:.8rem 1.5rem; border:1px solid var(--color-border-control,color-mix(in srgb,#f0e3d1 35%,transparent)); border-radius:999px; font:var(--type-control,500 1rem / 1.4 var(--font-sans,Archivo,'Helvetica Neue',Helvetica,Arial,sans-serif)); color:var(--color-surface-text,#f0e3d1); text-decoration:none; flex-shrink:0; } .ds-contact-link:focus-visible { outline:2px solid var(--color-focus,#f0e3d1); outline-offset:5px; } @media (hover:hover) { .ds-contact-link:hover { background:var(--color-action,#f0e3d1); color:var(--color-on-action,#040e19); } }"
     },
     {
       "name": "Contact field",
@@ -67,7 +108,7 @@
       "refersTo": "contact-field",
       "description": "Associated Name label/input, invalid border and disabled treatment. No invented hover treatment.",
       "html": "<label class=\"ds-contact-field\" for=\"ds-contact-name\">Name<input id=\"ds-contact-name\" name=\"name\" autocomplete=\"name\" required maxlength=\"120\" /></label>",
-      "css": ".ds-contact-field { display:grid; gap:.5rem; font-size:1rem; font-family:var(--font-sans,Archivo,sans-serif); color:var(--color-surface-text,#f0e3d1); } .ds-contact-field input { width:100%; border:1px solid var(--color-surface-muted,#bdb8ac); background:transparent; color:var(--color-paper,#f0e3d1); border-radius:.5rem; padding:.85rem 1rem; font:inherit; font-size:16px; caret-color:var(--color-paper,#f0e3d1); } .ds-contact-field input:focus-visible { outline:2px solid var(--color-paper,#f0e3d1); outline-offset:5px; } .ds-contact-field input[aria-invalid='true'] { border-width:2px; } .ds-contact-field input:disabled { opacity:.6; cursor:not-allowed; } .ds-contact-field input::placeholder { color:var(--color-surface-muted,#bdb8ac); opacity:1; }"
+      "css": ".ds-contact-field { display:grid; gap:.5rem; font:var(--type-label,500 .875rem / 1.4 var(--font-sans,Archivo,'Helvetica Neue',Helvetica,Arial,sans-serif)); color:var(--color-surface-text,#f0e3d1); } .ds-contact-field input { width:100%; border:1px solid var(--color-border-control,color-mix(in srgb,#f0e3d1 35%,transparent)); background:transparent; color:var(--color-surface-text,#f0e3d1); border-radius:.5rem; padding:.85rem 1rem; font:var(--type-body,400 1rem / 1.6 var(--font-sans,Archivo,'Helvetica Neue',Helvetica,Arial,sans-serif)); caret-color:var(--color-surface-text,#f0e3d1); } .ds-contact-field input:focus-visible { outline:2px solid var(--color-focus,#f0e3d1); outline-offset:5px; } .ds-contact-field input[aria-invalid='true'] { border-width:2px; } .ds-contact-field input:disabled { opacity:.6; cursor:not-allowed; } .ds-contact-field input::placeholder { color:var(--color-surface-muted,#bdb8ac); opacity:1; }"
     },
     {
       "name": "Archive select",
@@ -75,21 +116,21 @@
       "refersTo": "archive-select",
       "description": "Real sort options and native select styling shared with Tag/Domain. There is no chip primitive.",
       "html": "<label class=\"ds-archive-select\">Sort by<select name=\"sort\"><option value=\"highlighted\">Highlighted</option><option value=\"recent\">Recently added</option><option value=\"title\">Title A–Z</option></select></label>",
-      "css": ".ds-archive-select { display:grid; gap:.5rem; font-size:.875rem; color:var(--color-surface-muted,#bdb8ac); min-width:0; font-family:var(--font-sans,Archivo,sans-serif); } .ds-archive-select select { width:100%; min-height:44px; padding:.6rem 2rem .6rem .75rem; border:1px solid color-mix(in srgb,var(--color-paper,#f0e3d1) 35%,transparent); border-radius:.4rem; background:var(--color-midnight,#040e19); color:var(--color-paper,#f0e3d1); font:inherit; font-size:1rem; } .ds-archive-select select:focus-visible { outline:2px solid var(--color-paper,#f0e3d1); outline-offset:4px; } .ds-archive-select select:disabled { opacity:.6; cursor:wait; }"
+      "css": ".ds-archive-select { display:grid; gap:.5rem; font:var(--type-label,500 .875rem / 1.4 var(--font-sans,Archivo,'Helvetica Neue',Helvetica,Arial,sans-serif)); color:var(--color-surface-muted,#bdb8ac); min-width:0; } .ds-archive-select select { width:100%; min-height:44px; padding:.6rem 2rem .6rem .75rem; border:1px solid var(--color-border-control,color-mix(in srgb,#f0e3d1 35%,transparent)); border-radius:.4rem; background:var(--color-surface,#040e19); color:var(--color-surface-text,#f0e3d1); font:var(--type-control,500 1rem / 1.4 var(--font-sans,Archivo,'Helvetica Neue',Helvetica,Arial,sans-serif)); } .ds-archive-select select:focus-visible { outline:2px solid var(--color-focus,#f0e3d1); outline-offset:4px; } .ds-archive-select select:disabled { opacity:.6; cursor:wait; }"
     },
     {
       "name": "Navigation panel",
       "kind": "nav",
       "description": "Visible disclosure panel translation, not a fabricated badge or functioning Svelte menu. Hidden state and transitions are included.",
       "html": "<div class=\"ds-panel-anchor\"><nav class=\"ds-menu-panel ds-open\" aria-label=\"Main navigation\"><a href=\"/#showreel\">Showreel</a><a href=\"/?view=all#projects\">Projects</a><a href=\"/contact\">Contact</a></nav></div>",
-      "css": ".ds-panel-anchor { position:relative; min-height:14rem; width:100%; } .ds-menu-panel { position:absolute; right:0; top:0; width:min(24rem,100%); padding:1rem 1.5rem; background:var(--color-midnight,#040e19); color:var(--color-surface-text,#f0e3d1); box-shadow:0 1rem 2rem rgb(0 0 0 / .3); opacity:0; visibility:hidden; transform:translateY(-6px); transition:opacity 140ms var(--ease-reveal,cubic-bezier(.22,1,.36,1)),transform 140ms var(--ease-reveal,cubic-bezier(.22,1,.36,1)),visibility 140ms; } .ds-menu-panel.ds-open { opacity:1; visibility:visible; transform:translateY(0); transition-duration:var(--duration-menu,200ms); } .ds-menu-panel a { display:block; padding-block:.75rem; min-height:44px; font-family:var(--font-heading,'Archivo Narrow',Archivo,sans-serif); font-size:1.75rem; color:inherit; text-decoration:none; } .ds-menu-panel a:focus-visible { outline:2px solid var(--color-paper,#f0e3d1); outline-offset:5px; } @media (hover:hover) { .ds-menu-panel a:hover { text-decoration:underline; text-underline-offset:.2em; } } @media (max-width:600px) { .ds-menu-panel { width:100%; } } @media (prefers-reduced-motion:reduce) { .ds-menu-panel,.ds-menu-panel.ds-open { transition:none; transform:none; } }"
+      "css": ".ds-panel-anchor { position:relative; min-height:14rem; width:100%; } .ds-menu-panel { position:absolute; right:0; top:0; width:min(24rem,100%); padding:1rem 1.5rem; background:var(--color-surface,#040e19); color:var(--color-surface-text,#f0e3d1); box-shadow:0 1rem 2rem rgb(0 0 0 / .3); opacity:0; visibility:hidden; transform:translateY(-6px); transition:opacity 140ms var(--ease-reveal,cubic-bezier(.22,1,.36,1)),transform 140ms var(--ease-reveal,cubic-bezier(.22,1,.36,1)),visibility 140ms; } .ds-menu-panel.ds-open { opacity:1; visibility:visible; transform:translateY(0); transition-duration:var(--duration-menu,200ms); } .ds-menu-panel a { display:block; padding-block:.75rem; min-height:44px; font:var(--type-menu,600 1.75rem / 1.2 var(--font-heading,'Archivo Narrow',Archivo,sans-serif)); color:inherit; text-decoration:none; } .ds-menu-panel a:focus-visible { outline:2px solid var(--color-focus,#f0e3d1); outline-offset:5px; } @media (hover:hover) { .ds-menu-panel a:hover { text-decoration:underline; text-underline-offset:.2em; } } @media (max-width:600px) { .ds-menu-panel { width:100%; } } @media (prefers-reduced-motion:reduce) { .ds-menu-panel,.ds-menu-panel.ds-open { transition:none; transform:none; } }"
     },
     {
       "name": "Project card fallback",
       "kind": "card",
       "description": "Existing no-preview branch, with a real Project title/link and no fabricated imagery or description.",
       "html": "<a class=\"ds-project-card\" href=\"/project/puma-spec-ad\"><div class=\"ds-preview\"><span class=\"ds-no-preview\">Preview unavailable</span></div><h3>Puma</h3></a>",
-      "css": ".ds-project-card { display:block; color:var(--color-surface-text,#f0e3d1); text-decoration:none; min-width:0; font-family:var(--font-sans,Archivo,sans-serif); } .ds-preview { aspect-ratio:16 / 9; border-radius:var(--film-radius,1rem); overflow:hidden; background:color-mix(in srgb,var(--color-paper,#f0e3d1) 8%,var(--color-midnight,#040e19)); display:grid; place-items:center; } .ds-preview img { width:100%; height:100%; object-fit:contain; } .ds-no-preview { color:var(--color-surface-muted,#bdb8ac); font-size:.875rem; } .ds-project-card h3 { font-family:var(--font-heading,'Archivo Narrow',Archivo,sans-serif); font-size:clamp(1.5rem,2.2vw,2rem); line-height:1.12; margin:1rem 0 .45rem; overflow-wrap:anywhere; font-weight:inherit; } .ds-project-card p { color:var(--color-surface-muted,#bdb8ac); font-size:.95rem; line-height:1.5; margin:0; max-width:65ch; display:-webkit-box; -webkit-line-clamp:2; line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; } .ds-project-card:focus-visible { outline:2px solid var(--color-paper,#f0e3d1); outline-offset:6px; border-radius:var(--film-radius,1rem); } @media (hover:hover) and (pointer:fine) { .ds-project-card:hover h3 { text-decoration:underline; text-underline-offset:.2em; } }"
+      "css": ".ds-project-card { display:block; color:var(--color-surface-text,#f0e3d1); text-decoration:none; min-width:0; font:var(--type-body,400 1rem / 1.6 var(--font-sans,Archivo,'Helvetica Neue',Helvetica,Arial,sans-serif)); } .ds-preview { aspect-ratio:16 / 9; border-radius:var(--film-radius,1rem); overflow:hidden; background:var(--color-surface-raised,color-mix(in srgb,#f0e3d1 8%,#040e19)); display:grid; place-items:center; } .ds-preview img { width:100%; height:100%; object-fit:contain; } .ds-no-preview { color:var(--color-surface-muted,#bdb8ac); font:var(--type-caption,400 .875rem / 1.5 var(--font-sans,Archivo,'Helvetica Neue',Helvetica,Arial,sans-serif)); } .ds-project-card h3 { font:var(--type-card-title,600 clamp(1.5rem,2.2vw,2rem) / 1.12 var(--font-heading,'Archivo Narrow',Archivo,sans-serif)); margin:1rem 0 .45rem; overflow-wrap:anywhere; } .ds-project-card p { color:var(--color-surface-muted,#bdb8ac); font:var(--type-body,400 1rem / 1.6 var(--font-sans,Archivo,'Helvetica Neue',Helvetica,Arial,sans-serif)); margin:0; max-width:65ch; display:-webkit-box; -webkit-line-clamp:2; line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; } .ds-project-card:focus-visible { outline:2px solid var(--color-focus,#f0e3d1); outline-offset:6px; border-radius:var(--film-radius,1rem); } @media (hover:hover) and (pointer:fine) { .ds-project-card:hover h3 { text-decoration:underline; text-underline-offset:.2em; } }"
     }
   ],
   "narrative": {

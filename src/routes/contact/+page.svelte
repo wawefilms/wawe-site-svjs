@@ -81,18 +81,18 @@
 
 <style>
 	.contact-page { max-width: 46rem; padding-block: clamp(3rem, 6vw, 6rem) var(--section-space); }
-	.invitation { margin-top: 1rem; color: var(--color-surface-muted); }
-	.feedback { margin-top: 1.5rem; line-height: 1.5; }
+	.invitation { margin-top: 1rem; font: var(--type-body); color: var(--color-surface-muted); }
+	.feedback { margin-top: 1.5rem; font: var(--type-body); }
 	form { display: grid; gap: 1.5rem; margin-top: 2rem; }
 	fieldset { display: grid; gap: 1.5rem; min-width: 0; border: 0; padding: 0; margin: 0; }
 	fieldset:disabled :is(input, textarea) { opacity: .6; cursor: not-allowed; }
 	.field { display: grid; gap: .5rem; }
-	label { font-size: 1rem; }
-	input, textarea { width: 100%; border: 1px solid var(--color-surface-muted); background: transparent; color: var(--color-paper); border-radius: .5rem; padding: .85rem 1rem; font: inherit; font-size: 16px; }
+	label { font: var(--type-label); }
+	input, textarea { width: 100%; border: 1px solid var(--color-border-control); background: transparent; color: var(--color-surface-text); border-radius: .5rem; padding: .85rem 1rem; font: var(--type-body); }
 	textarea { resize: vertical; min-height: 10rem; }
-	.field-error { color: var(--color-paper); font-size: .9375rem; line-height: 1.5; }
+	.field-error { color: var(--color-surface-text); font: var(--type-body); }
 	[aria-invalid='true'] { border-width: 2px; }
-	button { justify-self: start; min-height: 48px; padding: .8rem 1.75rem; background: var(--color-paper); color: var(--color-midnight); border-radius: 999px; cursor: pointer; }
+	button { justify-self: start; min-height: 48px; padding: .8rem 1.75rem; background: var(--color-action); color: var(--color-on-action); font: var(--type-control); border-radius: 999px; cursor: pointer; }
 	button:disabled { opacity: .6; cursor: not-allowed; }
 	@media (hover: hover) { button:not(:disabled):hover { text-decoration: underline; text-underline-offset: .2em; } }
 </style>

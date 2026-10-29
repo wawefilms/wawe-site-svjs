@@ -6,6 +6,8 @@
 	import { galleryProjects, projectIdentity, type ProjectSummary, type ProjectQuery } from '$lib/projects/model';
 	import Seo from '$lib/components/Seo.svelte';
 	import { homeMetadata } from '$lib/seo/metadata';
+	import { clientLogo, officialClientLogo } from '$lib/projects/client-logos';
+	import badge from '$lib/landing/assets/badge-mask.png';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -14,6 +16,10 @@
 	let filmRatio = $state(16 / 9);
 	const identity = $derived(projectIdentity(activeProject, data.clients));
 	const catalogue = $derived(galleryProjects(data.projects));
+	const artworks = $derived([{ src: badge }, ...data.clients.flatMap(client => {
+		const src = clientLogo(client.title, client.logo);
+		return src ? [{ src, fallback: officialClientLogo(client.title) ?? undefined }] : [];
+	})]);
 	function changed(_query: ProjectQuery) { expandedRequested = false; }
 </script>
 
@@ -24,7 +30,7 @@
 <Seo meta={homeMetadata(catalogue, data.site.siteURL, data.site)} />
 <h1 class="sr-only">WAWE Films — Projects and Showreel</h1>
 <div class="home-composition" style:--film-ratio={filmRatio}>
-	<ShowreelHero showreel={data.showreel} projects={data.projects} onactiveproject={(project) => activeProject = project} onratiochange={(ratio) => filmRatio = ratio} />
+	<ShowreelHero showreel={data.showreel} projects={data.projects} {artworks} onactiveproject={(project) => activeProject = project} onratiochange={(ratio) => filmRatio = ratio} />
 	<Nav homepage activeIdentity={identity} onprojectsrequest={() => expandedRequested = true} />
 	<div class="opening-breathing-room" aria-hidden="true"></div>
 	<ProjectBrowser projects={catalogue} tags={data.tags} domains={data.domains} clients={data.clients}

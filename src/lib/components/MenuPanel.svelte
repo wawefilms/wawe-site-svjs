@@ -18,11 +18,10 @@
 </noscript>
 
 <style>
-	nav { position: absolute; right: 0; top: 100%; width: min(24rem, 100%); padding: 1rem 1.5rem; background: var(--color-midnight); color: var(--color-surface-text); box-shadow: 0 1rem 2rem rgb(0 0 0 / .3); opacity: 0; visibility: hidden; transform: translateY(-6px); transition: opacity 140ms var(--ease-reveal), transform 140ms var(--ease-reveal), visibility 140ms; }
+	nav { position: absolute; right: 0; top: 100%; width: min(24rem, 100%); padding: 1rem 1.5rem; background: var(--color-surface); color: var(--color-surface-text); box-shadow: 0 1rem 2rem rgb(0 0 0 / .3); opacity: 0; visibility: hidden; transform: translateY(-6px); transition: opacity 140ms var(--ease-reveal), transform 140ms var(--ease-reveal), visibility 140ms; }
 	nav.open { opacity: 1; visibility: visible; transform: translateY(0); transition-duration: var(--duration-menu); }
 	nav.no-script { opacity: 1; visibility: visible; transform: none; display: flex; width: auto; gap: 1rem; padding: .25rem 1rem; }
-	nav.no-script a { font-size: 1rem; }
-	a { display: block; padding-block: .75rem; min-height: 44px; font-family: var(--font-heading); font-size: 1.75rem; }
+	a { display: block; padding-block: .75rem; min-height: 44px; font: var(--type-menu); color: var(--color-surface-text); }
 	@media (hover: hover) { a:hover { text-decoration: underline; text-underline-offset: .2em; } }
 	@media (max-width: 600px) { nav { width: 100%; } }
 	@media (prefers-reduced-motion: reduce) { nav, nav.open { transition: none; transform: none; } }

@@ -47,9 +47,17 @@
   /* Simple Showreel route family; accepted ASCII opening retains its own font. */
   --font-heading: "Archivo Narrow", "Archivo", sans-serif;
   --color-midnight: #040e19;
-  --color-surface-text: #f0e3d1;
+  --color-surface-text: var(--color-paper);
   --color-surface-muted: #bdb8ac;
   --font-sans: "Archivo", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  /* Semantic surface/action styles; primitives above remain the brand inks. */
+  --color-surface: var(--color-midnight);
+  --color-surface-raised: color-mix(in srgb, var(--color-paper) 8%, var(--color-midnight));
+  --color-border: color-mix(in srgb, var(--color-paper) 20%, transparent);
+  --color-border-control: color-mix(in srgb, var(--color-paper) 35%, transparent);
+  --color-action: var(--color-paper);
+  --color-on-action: var(--color-midnight);
+  --color-focus: var(--color-paper);
 
   /* Motion: constant sweeps stay linear; easing curves are an open item (intro prototype). */
   --ease-sweep: linear;
@@ -63,6 +71,18 @@
 /* Shared simple-showreel composition: code-first per ADR-0002.
    Scoped replacement of ADR-0003's paper/rounded display; not an intro recolour. */
 :root {
+  /* Named text styles: font weight, responsive size, leading and family travel together. */
+  --type-page-title: 600 clamp(2.75rem, 6vw, 6rem) / 1.04 var(--font-heading);
+  --type-section-title: 600 clamp(2.5rem, 4vw, 4.5rem) / 1.08 var(--font-heading);
+  --type-card-title: 600 clamp(1.5rem, 2.2vw, 2rem) / 1.12 var(--font-heading);
+  --type-subheading: 600 2rem / 1.2 var(--font-heading);
+  --type-navigation: 600 clamp(1.25rem, 2vw, 1.75rem) / 1.2 var(--font-heading);
+  --type-menu: 600 1.75rem / 1.2 var(--font-heading);
+  --type-body: 400 1rem / 1.6 var(--font-sans);
+  --type-body-large: 400 1.125rem / 1.6 var(--font-sans);
+  --type-label: 500 .875rem / 1.4 var(--font-sans);
+  --type-caption: 400 .875rem / 1.5 var(--font-sans);
+  --type-control: 500 1rem / 1.4 var(--font-sans);
   --site-gutter: clamp(1.25rem, 5.2vw, 6rem);
   --site-width: 112rem;
   --bar-height: clamp(5rem, 9vw, 8rem);
@@ -74,9 +94,9 @@
   --duration-menu: 200ms;
 }
 .site-shell {
-  background: var(--color-midnight);
+  background: var(--color-surface);
   color: var(--color-surface-text);
-  font-family: var(--font-sans);
+  font: var(--type-body);
   color-scheme: dark;
   min-height: 100svh;
   accent-color: var(--color-paper);
@@ -84,11 +104,11 @@
 }
 .site-container { width: min(calc(100% - 2 * var(--site-gutter)), var(--site-width)); margin-inline: auto; }
 .site-heading { font-family: var(--font-heading); font-weight: 600; line-height: 1.08; text-wrap: balance; }
-.site-shell h1 { font-family: var(--font-heading); font-size: clamp(2.75rem, 6vw, 6rem); line-height: 1.04; text-wrap: balance; }
+.site-shell h1 { font: var(--type-page-title); text-wrap: balance; }
 .site-shell :is(h2, h3) { font-family: var(--font-heading); }
-.site-shell :is(a, button, input, textarea, select):focus-visible { outline: 2px solid var(--color-paper); outline-offset: 5px; }
-.site-shell ::selection { background: var(--color-paper); color: var(--color-midnight); }
-.site-shell :is(input, textarea) { caret-color: var(--color-paper); }
+.site-shell :is(a, button, input, textarea, select):focus-visible { outline: 2px solid var(--color-focus); outline-offset: 5px; }
+.site-shell ::selection { background: var(--color-action); color: var(--color-on-action); }
+.site-shell :is(input, textarea) { caret-color: var(--color-surface-text); }
 .site-shell :is(input, textarea)::placeholder { color: var(--color-surface-muted); opacity: 1; }
 .site-shell a { text-underline-offset: .2em; }
 .site-shell :is(#projects, #contact, #showreel) { scroll-margin-top: calc(var(--bar-height) + 1rem); }

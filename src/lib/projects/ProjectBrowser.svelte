@@ -130,12 +130,13 @@
 	<div class="projects-content" bind:this={content}>
 		<header>
 			<div class="heading-copy">
-			<h2 id="projects-title" class="site-heading" bind:this={heading} tabindex="-1">{expanded ? 'All Projects' : 'Highlighted Projects'}</h2>
-			{#if !unavailable}<span class="count" aria-live="polite">{visible.length} / {projects.length}</span>{/if}
+			<h2 id="projects-title" class="site-heading" bind:this={heading} tabindex="-1">{expanded ? 'All Projects' : 'Selected work'}</h2>
+			<p class="section-intro">An AI-native production house for brands and agency partners.</p>
 			</div>
 			{#if projects.length > 5}
 				<div class="toggle-row">
-					<a class="toggle" bind:this={toggle} href={toggleHref} onclick={toggleView} aria-controls="project-grid" aria-expanded={expanded} aria-disabled={pending}>{expanded ? 'Show five highlights' : 'View all projects'}</a>
+					{#if !unavailable}<span class="count" aria-live="polite">{expanded ? `${visible.length} of ${projects.length} projects` : `5 selected · ${projects.length} projects`}</span>{/if}
+					<a class="toggle" bind:this={toggle} href={toggleHref} onclick={toggleView} aria-controls="project-grid" aria-expanded={expanded} aria-disabled={pending}>{expanded ? 'Show five highlights' : `View all ${projects.length} projects`}</a>
 					{#if expanded}<p>Collapsing resets filters and sorting.</p>{/if}
 				</div>
 			{/if}
@@ -156,7 +157,7 @@
 					{/if}
 				</form>
 			{/if}
-			<div id="project-grid" class="grid">
+			<div id="project-grid" class="grid" class:selected={!expanded}>
 				{#each visible as project (project.id)}
 					<div class="grid-item" data-project-id={project.id} animate:flip={{ duration: reduced ? 0 : REORDER_DURATION, easing: cubicOut }} in:fade={{ duration: reduced ? 0 : 160 }}>
 						<ProjectCard {project} returnTo={context} />
@@ -173,21 +174,25 @@
 <style>
 	.projects { margin-block: var(--section-space); color: var(--color-surface-text); }
 	.projects-content { display: flow-root; }
-	header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1.5rem; margin-bottom: clamp(2rem, 4vw, 4rem); }
-	h2 { margin: 0; font-size: clamp(2.5rem, 4vw, 4.5rem); max-width: 12ch; }
-	.heading-copy { display: flex; align-items: end; justify-content: space-between; gap: 1rem; flex: 1 1 22rem; min-width: 0; }
-	.count { color: var(--color-surface-muted); font-variant-numeric: tabular-nums; white-space: nowrap; padding-bottom: .25rem; }
+	header { display: flex; align-items: end; justify-content: space-between; flex-wrap: wrap; gap: 1.5rem 3rem; margin-bottom: clamp(2rem, 4vw, 3rem); }
+	h2 { margin: 0; font: var(--type-section-title); text-wrap: balance; }
+	.heading-copy { flex: 1 1 22rem; min-width: 0; }
+	.section-intro { margin: 1rem 0 0; max-width: 48ch; color: var(--color-surface-muted); font: var(--type-body); }
+	.count { color: var(--color-surface-muted); font: var(--type-caption); font-variant-numeric: tabular-nums; white-space: nowrap; padding-bottom: .25rem; }
 	form { display: flex; align-items: end; flex-wrap: wrap; gap: 1rem; margin-bottom: 2.5rem; }
 	form :global(label) { flex: 1 1 12rem; }
-	button, .toggle { min-height: 44px; border: 1px solid var(--color-paper); border-radius: .4rem; padding: .75rem 1.25rem; background: var(--color-paper); color: var(--color-midnight); font: inherit; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+	button, .toggle { min-height: 44px; border: 1px solid var(--color-action); border-radius: .4rem; padding: .75rem 1.25rem; background: var(--color-action); color: var(--color-on-action); font: var(--type-control); text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
 	button:disabled, .toggle[aria-disabled='true'] { opacity: .55; cursor: wait; }
-	.clear { min-height: 44px; display: inline-flex; align-items: center; color: inherit; }
+	.clear { min-height: 44px; display: inline-flex; align-items: center; color: inherit; font: var(--type-control); }
 	.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(2rem, 4vw, 4rem) clamp(1rem, 2vw, 2rem); }
 	.grid-item { min-width: 0; }
+	.grid.selected { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+	.grid.selected .grid-item { grid-column: span 2; }
+	.grid.selected .grid-item:nth-child(-n + 2) { grid-column: span 3; }
 	.toggle-row { display: grid; justify-items: end; gap: .5rem; flex-shrink: 0; }
-	.toggle-row p { font-size: .875rem; color: var(--color-surface-muted); margin: 0; }
-	.empty { color: var(--color-surface-muted); max-width: 65ch; line-height: 1.6; margin: 2rem 0; }
-	.empty a { color: var(--color-paper); }
-	@media (max-width: 1000px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-	@media (max-width: 560px) { .grid { grid-template-columns: minmax(0, 1fr); } header { align-items: start; } .toggle-row { justify-items: start; } .count { padding-top: .5rem; } }
+	.toggle-row p { font: var(--type-caption); color: var(--color-surface-muted); margin: 0; }
+	.empty { color: var(--color-surface-muted); max-width: 65ch; font: var(--type-body); margin: 2rem 0; }
+	.empty a { color: var(--color-surface-text); }
+	@media (max-width: 1000px) { .grid, .grid.selected { grid-template-columns: repeat(2, minmax(0, 1fr)); } .grid.selected .grid-item:nth-child(n) { grid-column: auto; } }
+	@media (max-width: 560px) { .grid, .grid.selected { grid-template-columns: minmax(0, 1fr); } header { align-items: start; } .toggle-row { justify-items: start; } .count { padding-top: .5rem; } }
 </style>

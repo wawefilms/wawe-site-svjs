@@ -6,9 +6,9 @@
 </footer>
 
 <style>
-	footer { flex-shrink: 0; background: var(--color-midnight); color: var(--color-surface-muted); border-top: 1px solid color-mix(in srgb, var(--color-paper) 20%, transparent); padding-block: 1.5rem calc(1.5rem + env(safe-area-inset-bottom)); font-size: .875rem; }
+	footer { flex-shrink: 0; background: var(--color-surface); color: var(--color-surface-muted); border-top: 1px solid var(--color-border); padding-block: 1.5rem calc(1.5rem + env(safe-area-inset-bottom)); font: var(--type-caption); }
 	.footer-inner { display: flex; align-items: center; justify-content: space-between; gap: 1rem 2rem; flex-wrap: wrap; }
 	nav { display: flex; gap: 1.5rem; }
-	a { display: inline-flex; align-items: center; min-height: 44px; }
-	@media (hover: hover) { a:hover { color: var(--color-paper); text-decoration: underline; } }
+	a { display: inline-flex; align-items: center; min-height: 44px; font: var(--type-control); color: var(--color-surface-text); }
+	@media (hover: hover) { a:hover { text-decoration: underline; } }
 </style>

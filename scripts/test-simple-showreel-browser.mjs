@@ -15,8 +15,8 @@ const evaluate = code => run('eval', code).result;
 try {
 	run('open', origin + '/');
 	run('wait', '--fn', 'document.querySelector(".toggle") !== null');
-	run('wait', '--fn', 'document.querySelector(".intro.active") !== null');
-	const intro = evaluate('(() => { const el=document.querySelector(".intro.active"), r=el.getBoundingClientRect(); return {position:getComputedStyle(el).position,left:r.left,top:r.top,width:r.width,height:r.height,viewportWidth:innerWidth,viewportHeight:innerHeight,videos:document.querySelectorAll("video").length}; })()');
+	run('wait', '--fn', 'document.querySelector(".intro") !== null');
+	const intro = evaluate('(() => { const el=document.querySelector(".intro"), r=el.getBoundingClientRect(); return {position:getComputedStyle(el).position,left:r.left,top:r.top,width:r.width,height:r.height,viewportWidth:innerWidth,viewportHeight:innerHeight,videos:document.querySelectorAll("video").length}; })()');
 	assert.equal(intro.position, 'fixed', 'ASCII intro must be viewport-fixed, not film-contained');
 	assert.ok(Math.abs(intro.left) < 1 && Math.abs(intro.top) < 1);
 	assert.ok(Math.abs(intro.width - intro.viewportWidth) < 2 && Math.abs(intro.height - intro.viewportHeight) < 2, 'Active ASCII field must cover the full viewport');
@@ -26,7 +26,9 @@ try {
 	console.log('PASS: fullscreen ASCII intro, heading-level archive toggle and no redundant montage card');
 	run('wait', '--fn', 'document.querySelector(".film-toggle") !== null && document.querySelector("video").readyState >= 2');
 	// The HTML-only annotation copy could not hydrate. Exercise real controls here.
-	evaluate('document.querySelector(".intro button")?.click(); document.querySelector("video").pause(); true');
+	run('wait', '--fn', 'document.querySelector(".intro.active") === null');
+	assert.equal(evaluate('document.querySelector(".intro button") === null'), true, 'Readiness must dismiss the intro without a visible Skip button');
+	evaluate('document.querySelector("video").pause(); true');
 	run('wait', '--fn', 'document.querySelector(".film-toggle").getAttribute("aria-label") === "Play showreel"');
 	assert.equal(evaluate('document.querySelector("video").controls'), false, 'Enhanced Showreel must hide the native play bar');
 	for (const width of [390, 1512]) {
@@ -56,7 +58,7 @@ try {
 			evaluate(`document.querySelector("video").currentTime = ${time}; true`);
 			run('wait', '--fn', `!document.querySelector("video").seeking && document.querySelector("video").readyState >= 2 && document.querySelector(".client-logo")?.alt === ${JSON.stringify(title)} && document.querySelector(".client-logo").naturalWidth > 0`);
 			const src = evaluate('document.querySelector(".client-logo").getAttribute("src")');
-			if (process.env.BROWSER_TEST_CMS_LOGOS === '1') assert.match(src, /^\/api\/client-logo\/[1-9]\d*\?asset=[1-9]\d*$/);
+			if (process.env.BROWSER_TEST_CMS_LOGOS === '1') assert.match(src, /^https:\/\/media\.wawefilms\.com\/media\/[^/]+\.png$/);
 			else assert.equal(src, path);
 		}
 		console.log('PASS: supplied 14-segment timeline switches all three official client logos');
@@ -82,7 +84,7 @@ try {
 	assert.equal(evaluate('document.activeElement === document.querySelector(".menu-trigger")'), true, 'Escape must return Menu focus');
 	console.log('PASS: centered uncropped video, tap playback/mute controls and working Menu');
 	evaluate('window.__firstFive = Array.from(document.querySelectorAll("[data-project-id]")); true');
-	run('find', 'role', 'link', 'click', '--name', 'View all projects');
+	run('click', '.toggle');
 	run('wait', '--fn', 'location.search.includes("view=all") && document.querySelector(".toggle").getAttribute("aria-disabled") === "false"');
 	assert.equal(evaluate('window.__firstFive.every(n => document.contains(n))'), true, 'Expansion must preserve original keyed nodes');
 	const option = evaluate('Array.from(document.querySelectorAll("select[name=tag] option")).find(o => o.value && o.textContent === "Spec Ads")?.value ?? Array.from(document.querySelectorAll("select[name=tag] option")).find(o => o.value)?.value');

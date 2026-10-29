@@ -3,6 +3,7 @@ import type { Client, Domain, Media, Project, Tag } from '../payload-types';
 import { fetchCMS } from './cms-fetch';
 import { sortProjects } from '../projects/model';
 import { clientLogoSource } from '../media/client-logo';
+import { sourceURL } from '../landing/sources';
 
 const API = env.PAYLOAD_API_URL ?? 'http://localhost:3000';
 
@@ -57,7 +58,7 @@ export async function getClients(): Promise<Client[]> {
 		return (data.docs ?? []).map(client => {
 			const logo = client.logo;
 			return logo && typeof logo === 'object' && logo.url && clientLogoSource(logo.url, logo.mimeType ?? '', API)
-				? { ...client, logo: { ...logo, url: `/api/client-logo/${client.id}?asset=${logo.id}` } }
+				? { ...client, logo: { ...logo, url: sourceURL(logo.url) ? logo.url : `/api/client-logo/${client.id}?asset=${logo.id}` } }
 				: client;
 		});
 	} catch {

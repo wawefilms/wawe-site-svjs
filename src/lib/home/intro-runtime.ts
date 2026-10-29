@@ -2,7 +2,7 @@ import opening from '../landing/approved-opening.json';
 import { createField } from '../landing/field.js';
 import { createMotion, defaults } from '../landing/motion.js';
 import { createCleanup } from './playback';
-import { INTRO_DEADLINE_MS, waitForFrame } from './readiness';
+import { INTRO_DEADLINE_MS, waitForFrame, waitForArtwork, type Artwork } from './readiness';
 
 export interface IntroOptions {
 	host: HTMLElement;
@@ -10,12 +10,13 @@ export interface IntroOptions {
 	water: HTMLCanvasElement;
 	logo: HTMLCanvasElement;
 	reveal: HTMLCanvasElement;
+	artworks?: readonly Artwork[];
 	onopening(): void;
 	onfinish(): void;
 }
 
 /** The accepted wave kernel, with native video as the only reveal painter. */
-export function mountIntro({ host, video, water, logo, reveal, onopening, onfinish }: IntroOptions) {
+export function mountIntro({ host, video, water, logo, reveal, artworks = [], onopening, onfinish }: IntroOptions) {
 	const cleanup = createCleanup();
 	const controller = new AbortController();
 	const reduce = matchMedia('(prefers-reduced-motion: reduce)');
@@ -72,10 +73,9 @@ export function mountIntro({ host, video, water, logo, reveal, onopening, onfini
 					const film = video.getBoundingClientRect(), overlay = host.getBoundingClientRect();
 					ctx.drawImage(video, film.left - overlay.left, film.top - overlay.top, film.width, film.height);
 				}, viewport);
-			// The 25s outer deadline covers field/font loading AND readiness AND reveal.
-			const ready = waitForFrame(video, controller.signal).then(() => {
-				if (!cleanup.disposed) motion.signalReady();
-			}).catch(finish);
+			// No artificial lap/minimum viewing time: ready means first frame AND all logo pixels.
+			// The outer deadline still fails open if loading/decoding or the renderer stalls.
+			const ready = Promise.all([waitForFrame(video, controller.signal), waitForArtwork(artworks, controller.signal)]).then(finish).catch(finish);
 			await field.load(controller.signal);
 			if (cleanup.disposed) return;
 			onopening();
@@ -86,7 +86,6 @@ export function mountIntro({ host, video, water, logo, reveal, onopening, onfini
 			resize.observe(host);
 			cleanup.add(() => resize.disconnect());
 			await ready;
-			if (!cleanup.disposed) motion.signalReady();
 		} catch { finish(); }
 	})();
 	return { dispose: () => cleanup.dispose(), skip: finish };
