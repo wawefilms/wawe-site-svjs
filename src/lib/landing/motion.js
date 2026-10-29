@@ -29,7 +29,7 @@ export function createMotion(speed, reduced=false) {
       const state=skipped ? 'settled' : !ready ? 'loading' : !settings ? 'armed'
         : age<settings.washSeconds ? 'surge'
         : age<settings.washSeconds+settings.recedeSeconds ? 'recede' : 'settled';
-      return { state, clock, ready, count, age, start, reduced:skipped,
+      return { state, clock, firstLapComplete: clock>=PERIOD-OFFSET, ready, count, age, start, reduced:skipped,
         segment:settings ? {...settings, age} : null };
     }
   };

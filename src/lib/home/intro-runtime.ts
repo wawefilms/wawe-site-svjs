@@ -22,6 +22,7 @@ export function mountIntro({ host, video, water, logo, reveal, artworks = [], on
 	const reduce = matchMedia('(prefers-reduced-motion: reduce)');
 	const motion = createMotion(opening.speed, reduce.matches);
 	let raf = 0, last: number | null = null;
+	let ready = false;
 	const viewport = () => ({ width: host.clientWidth, height: host.clientHeight });
 	const contexts = [water, logo, reveal].map(canvas => canvas.getContext('2d'));
 	let field: ReturnType<typeof createField> | null = null;
@@ -54,7 +55,7 @@ export function mountIntro({ host, video, water, logo, reveal, artworks = [], on
 			last = now;
 			motion.tick(dt, defaults);
 			const snapshot = motion.snapshot();
-			if (snapshot.state === 'settled') { finish(); return; }
+			if (snapshot.state === 'settled' || (ready && snapshot.firstLapComplete)) { finish(); return; }
 			field?.render(snapshot.clock, snapshot.segment ? { ...snapshot.segment, variant: 'erosion' } : null, false);
 			raf = requestAnimationFrame(frame);
 		} catch { finish(); }
@@ -73,9 +74,10 @@ export function mountIntro({ host, video, water, logo, reveal, artworks = [], on
 					const film = video.getBoundingClientRect(), overlay = host.getBoundingClientRect();
 					ctx.drawImage(video, film.left - overlay.left, film.top - overlay.top, film.width, film.height);
 				}, viewport);
-			// No artificial lap/minimum viewing time: ready means first frame AND all logo pixels.
-			// The outer deadline still fails open if loading/decoding or the renderer stalls.
-			const ready = Promise.all([waitForFrame(video, controller.signal), waitForArtwork(artworks, controller.signal)]).then(finish).catch(finish);
+			// Keep the first painted breaker (~2.3s at the accepted speed), even on
+			// cache hits. Slow readiness never resets the lap; failures still fail open.
+			const readiness = Promise.all([waitForFrame(video, controller.signal), waitForArtwork(artworks, controller.signal)])
+				.then(() => { ready = true; }).catch(finish);
 			await field.load(controller.signal);
 			if (cleanup.disposed) return;
 			onopening();
@@ -85,7 +87,7 @@ export function mountIntro({ host, video, water, logo, reveal, artworks = [], on
 			});
 			resize.observe(host);
 			cleanup.add(() => resize.disconnect());
-			await ready;
+			await readiness;
 		} catch { finish(); }
 	})();
 	return { dispose: () => cleanup.dispose(), skip: finish };
