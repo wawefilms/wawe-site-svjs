@@ -1,7 +1,7 @@
 <script lang="ts">
-	import type { Domain, Tag } from '$lib/payload-types';
-	let { tags = [], domains = [], selectedTag = $bindable<string | null>(null), selectedDomain = $bindable<string | null>(null), disabled = false }: {
-		tags: Tag[]; domains: Domain[]; selectedTag?: string | null; selectedDomain?: string | null; disabled?: boolean;
+	import type { Client, Domain, Tag } from '$lib/payload-types';
+	let { tags = [], domains = [], clients = [], selectedTag = $bindable<string | null>(null), selectedDomain = $bindable<string | null>(null), selectedClient = $bindable<string | null>(null), disabled = false }: {
+		tags: Tag[]; domains: Domain[]; clients?: Client[]; selectedTag?: string | null; selectedDomain?: string | null; selectedClient?: string | null; disabled?: boolean;
 	} = $props();
 </script>
 
@@ -18,6 +18,14 @@
 		<select name="domain" bind:value={selectedDomain} {disabled}>
 			<option value="">All domains</option>
 			{#each domains as domain (domain.id)}<option value={String(domain.id)}>{domain.domain}</option>{/each}
+		</select>
+	</label>
+{/if}
+{#if clients.length}
+	<label>Company
+		<select name="client" bind:value={selectedClient} {disabled}>
+			<option value="">All companies</option>
+			{#each clients as client (client.id)}<option value={String(client.id)}>{client.title}</option>{/each}
 		</select>
 	</label>
 {/if}

@@ -90,8 +90,8 @@ try {
 	const option = evaluate('Array.from(document.querySelectorAll("select[name=tag] option")).find(o => o.value && o.textContent === "Spec Ads")?.value ?? Array.from(document.querySelectorAll("select[name=tag] option")).find(o => o.value)?.value');
 	assert.ok(option, 'Fixture needs a populated Tag');
 	run('select', 'select[name="tag"]', option);
+	run('wait', '--fn', `location.search.includes("tag=${option}") && !document.querySelector("select[name=sort]").disabled`);
 	run('select', 'select[name="sort"]', 'title');
-	run('find', 'role', 'button', 'click', '--name', 'Apply');
 	run('wait', '--fn', `location.search.includes("tag=${option}") && location.search.includes("sort=title") && document.querySelector(".toggle").getAttribute("aria-disabled") === "false"`);
 	const before = evaluate('({url:location.href,ids:Array.from(document.querySelectorAll("[data-project-id]")).map(n=>n.dataset.projectId)})');
 	assert.ok(before.ids.length, 'Fixture Tag must have Projects');

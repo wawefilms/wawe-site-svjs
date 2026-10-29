@@ -19,6 +19,9 @@
 	setContext('intro', intro);
 
 	onNavigate((navigation) => {
+		// Catalogue selections already animate in place; do not snapshot the whole
+		// page or delay immediate filters for same-route query/hash changes.
+		if (navigation.from?.url.pathname === navigation.to?.url.pathname) return;
 		if (!document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 		return new Promise((resolve) => {
 			// @ts-ignore

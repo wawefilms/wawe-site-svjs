@@ -18,6 +18,6 @@ export const load: PageServerLoad = async ({ params, url }) => {
 		project,
 		safeHtml: projectSafeHtml(project),
 		detail: projectDetail(project, clients, tags),
-		backHref: projectBackLink(url.searchParams.get('returnTo'), tags, domains)
+		backHref: projectBackLink(url.searchParams.get('returnTo'), tags, domains, clients)
 	};
 };

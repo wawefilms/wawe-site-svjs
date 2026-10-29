@@ -3,7 +3,7 @@
 	import { flip } from 'svelte/animate';
 	import { fade } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
-	import { replaceState } from '$app/navigation';
+	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import type { Client, Domain, Tag } from '$lib/payload-types';
 	import ProjectCard from '$lib/components/ProjectCard.svelte';
@@ -20,6 +20,7 @@
 	let query = $state<ProjectQuery>({ ...untrack(() => initialQuery) });
 	let selectedTag = $state<string | null>(untrack(() => initialQuery).tag === null ? '' : String(untrack(() => initialQuery).tag));
 	let selectedDomain = $state<string | null>(untrack(() => initialQuery).domain === null ? '' : String(untrack(() => initialQuery).domain));
+	let selectedClient = $state<string | null>(untrack(() => initialQuery).client === null ? '' : String(untrack(() => initialQuery).client));
 	let selectedSort = $state<ProjectSort>(untrack(() => initialQuery).sort);
 	let section: HTMLElement;
 	let content: HTMLDivElement;
@@ -33,13 +34,14 @@
 	const expanded = $derived(query.view === 'all' || projects.length <= 5);
 	const visible = $derived(expanded ? sortProjects(filterProjects(projects, query, clients), query.sort) : sortProjects(projects).slice(0, 5));
 	const context = $derived(`/${projectQueryParams(query).size ? `?${projectQueryParams(query)}` : ''}#projects`);
-	const toggleQuery = $derived<ProjectQuery>(expanded ? { view: 'highlighted', tag: null, domain: null, sort: 'highlighted' } : { view: 'all', tag: null, domain: null, sort: 'highlighted' });
+	const toggleQuery = $derived<ProjectQuery>(expanded ? { view: 'highlighted', tag: null, domain: null, client: null, sort: 'highlighted' } : { view: 'all', tag: null, domain: null, client: null, sort: 'highlighted' });
 	const toggleHref = $derived(`/${projectQueryParams(toggleQuery).size ? `?${projectQueryParams(toggleQuery)}` : ''}#projects`);
 
 	function assign(next: ProjectQuery) {
 		query = { ...next };
 		selectedTag = next.tag === null ? '' : String(next.tag);
 		selectedDomain = next.domain === null ? '' : String(next.domain);
+		selectedClient = next.client === null ? '' : String(next.client);
 		selectedSort = next.sort;
 	}
 	function announce(next: ProjectQuery) { onquerychange?.({ ...next }); }
@@ -61,37 +63,41 @@
 			if (version !== generation) return;
 			if (writeURL) {
 				const url = new URL(page.url);
-				for (const key of ['view', 'tag', 'domain', 'sort']) url.searchParams.delete(key);
+				for (const key of ['view', 'tag', 'domain', 'client', 'sort']) url.searchParams.delete(key);
 				for (const [key, value] of projectQueryParams(next)) url.searchParams.set(key, value);
 				url.hash = 'projects';
-				replaceState(url, page.state);
+				// Keep SvelteKit's loaded URL and history in sync for Back/SSR restoration.
+				await goto(url, { replaceState: true, noScroll: true, keepFocus: true });
 			}
 			announce(next);
 			if (collapsing) keepHeadingVisible();
 		} finally { pending = false; }
 	}
-	function submit(event: SubmitEvent) {
-		event.preventDefault();
-		const form = event.currentTarget as HTMLFormElement;
+	function apply(form: HTMLFormElement) {
 		const params = new URLSearchParams();
 		for (const [key, value] of new FormData(form)) if (typeof value === 'string') params.append(key, value);
-		void change(parseProjectQuery(params, tags, domains));
+		void change(parseProjectQuery(params, tags, domains, clients));
 	}
+	function submit(event: SubmitEvent) {
+		event.preventDefault();
+		apply(event.currentTarget as HTMLFormElement);
+	}
+	function selectionChanged(event: Event) { apply(event.currentTarget as HTMLFormElement); }
 	function toggleView(event: MouseEvent) {
 		if (event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
 		event.preventDefault();
 		void change(toggleQuery);
 	}
 
-	// SvelteKit may restore cached loader data after shallow updates. The live route URL
-	// is the authority for browser Back; initialQuery is only the SSR seed.
+	// Cached loader data can precede the restored browser URL. initialQuery is
+	// only the SSR seed; keep controls aligned with the live catalogue query.
 	$effect(() => {
 		// Read page.url to react to SvelteKit navigation, but cached Page data/URL
 		// can precede the history entry. location is authoritative on this browser-only effect.
 		page.url;
-		const next = parseProjectQuery(new URL(location.href).searchParams, tags, domains);
+		const next = parseProjectQuery(new URL(location.href).searchParams, tags, domains, clients);
 		untrack(() => {
-			if (next.view === query.view && next.tag === query.tag && next.domain === query.domain && next.sort === query.sort) return;
+			if (next.view === query.view && next.tag === query.tag && next.domain === query.domain && next.client === query.client && next.sort === query.sort) return;
 			generation++; transition?.finish(); assign(next);
 		});
 	});
@@ -111,7 +117,7 @@
 		const layout = () => transition?.layoutChanged();
 		const visibility = () => { if (document.hidden) transition?.finish(); };
 		document.addEventListener('visibilitychange', visibility);
-		const restore = () => { generation++; transition?.finish(); assign(parseProjectQuery(new URL(location.href).searchParams, tags, domains)); announce(query); };
+		const restore = () => { generation++; transition?.finish(); assign(parseProjectQuery(new URL(location.href).searchParams, tags, domains, clients)); announce(query); };
 		window.addEventListener('popstate', restore);
 		window.addEventListener('resize', layout);
 		preference.addEventListener('change', motion);
@@ -147,13 +153,13 @@
 			<p class="empty">There are no Projects to show yet. <a href="/contact">Contact us</a>.</p>
 		{:else}
 			{#if expanded}
-				<form method="GET" action="/#projects" onsubmit={submit} aria-label="Filter and sort Projects">
+				<form method="GET" action="/#projects" onsubmit={submit} onchange={selectionChanged} aria-label="Filter and sort Projects">
 					<input type="hidden" name="view" value="all" />
-					<ProjectFilters {tags} {domains} bind:selectedTag bind:selectedDomain disabled={pending} />
+					<ProjectFilters {tags} {domains} {clients} bind:selectedClient bind:selectedTag bind:selectedDomain disabled={pending} />
 					<ProjectSortControl bind:value={selectedSort} disabled={pending} />
-					<button type="submit" disabled={pending}>Apply</button>
-					{#if query.tag !== null || query.domain !== null}
-						<a class="clear" href={`/?${projectQueryParams({ ...query, tag: null, domain: null })}#projects`} onclick={(event) => { if (!event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); void change({ ...query, tag: null, domain: null }); } }}>Clear filters</a>
+					{#if !mounted}<button type="submit" disabled={pending}>Apply</button>{/if}
+					{#if query.tag !== null || query.domain !== null || query.client !== null}
+						<a class="clear" href={`/?${projectQueryParams({ ...query, tag: null, domain: null, client: null })}#projects`} onclick={(event) => { if (!event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); void change({ ...query, tag: null, domain: null, client: null }); } }}>Clear filters</a>
 					{/if}
 				</form>
 			{/if}

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { Client, Project } from '../payload-types.ts';
-import { galleryProjects, filterProjects, parseProjectQuery, projectIdentity, projectQueryParams, sortProjects } from './model.ts';
+import { galleryProjects, galleryTags, filterProjects, parseProjectQuery, projectIdentity, projectQueryParams, sortProjects } from './model.ts';
 
 const project = (id: number, fields: Partial<Project> = {}): Project => ({
 	id, title: `Project ${id}`, slug: `project-${id}`, shortDesc: '', video: 1,
@@ -54,18 +54,69 @@ test('Filters intersect tag and any client domain, populated or resolved numeric
 test('Query validation, archive inference and canonical roundtrip use numeric IDs', () => {
 	const tags = [{ id: 5 }], domains = [{ id: 10 }];
 	const parsed = parseProjectQuery(new URLSearchParams('view=all&tag=5&domain=10&sort=title&junk=bad'), tags, domains);
-	assert.deepEqual(parsed, { view: 'all', tag: 5, domain: 10, sort: 'title' });
+	assert.deepEqual(parsed, { view: 'all', tag: 5, domain: 10, client: null, sort: 'title' });
 	assert.equal(projectQueryParams(parsed).toString(), 'view=all&tag=5&domain=10&sort=title');
 	assert.deepEqual(parseProjectQuery(projectQueryParams(parsed), tags, domains), parsed);
 	assert.equal(parseProjectQuery(new URLSearchParams('tag=5'), tags, domains).view, 'all');
 	assert.equal(parseProjectQuery(new URLSearchParams('sort=recent'), tags, domains).sort, 'recent');
 	for (const query of ['', 'tag=05&domain=-10&sort=nope', 'view=oops&tag=999', 'tag=5&tag=5&sort=title&sort=recent', 'tag=5.0', 'tag=9007199254740993']) {
 		const empty = parseProjectQuery(new URLSearchParams(query), tags, domains);
-		assert.deepEqual(empty, { view: 'highlighted', tag: null, domain: null, sort: 'highlighted' });
+		assert.deepEqual(empty, { view: 'highlighted', tag: null, domain: null, client: null, sort: 'highlighted' });
 		assert.equal(projectQueryParams(empty).toString(), '');
 	}
 });
 
+test('Company filters match numeric and populated clients and intersect tag and domain filters', () => {
+	const clients = [client(1, { domains: [10] }), client(2, { domains: [20] })];
+	const input = Object.freeze([
+		project(1, { tags: [5], clients: [1] }),
+		project(2, { tags: [5], clients: [clients[0]] }),
+		project(3, { tags: [6], clients: [1] }),
+		project(4, { tags: [5], clients: [2] }),
+		project(5, { tags: [5], clients: [1, 2] }),
+		project(6, { clients: null }), project(7, { clients: [] })
+	]);
+	assert.deepEqual(ids(filterProjects(input, { tag: null, domain: null, client: 1 })), [1, 2, 3, 5]);
+	assert.deepEqual(ids(filterProjects(input, { tag: 5, domain: 10, client: 1 }, clients)), [1, 2, 5]);
+	// Domain may match another company on a multi-company project.
+	assert.deepEqual(ids(filterProjects(input, { tag: 5, domain: 20, client: 1 }, clients)), [5]);
+	assert.deepEqual(filterProjects(input, { tag: null, domain: null, client: null }), input);
+	assert.deepEqual(filterProjects(input, { tag: null, domain: null, client: 999 }), []);
+});
+
+test('Company query validation, archive inference and canonical roundtrips use known numeric IDs', () => {
+	const tags = [{ id: 5 }], domains = [{ id: 10 }], clients = [{ id: 2 }, { id: 0 }];
+	const parsed = parseProjectQuery(new URLSearchParams('tag=5&domain=10&client=2&sort=recent'), tags, domains, clients);
+	assert.deepEqual(parsed, { view: 'all', tag: 5, domain: 10, client: 2, sort: 'recent' });
+	assert.equal(projectQueryParams(parsed).toString(), 'view=all&tag=5&domain=10&client=2&sort=recent');
+	assert.deepEqual(parseProjectQuery(projectQueryParams(parsed), tags, domains, clients), parsed);
+	for (const id of [0, 2]) {
+		const query = parseProjectQuery(new URLSearchParams(`client=${id}`), tags, domains, clients);
+		assert.deepEqual(query, { view: 'all', tag: null, domain: null, client: id, sort: 'highlighted' });
+		assert.equal(projectQueryParams({ ...query, view: 'highlighted' }).get('view'), 'all');
+		assert.deepEqual(parseProjectQuery(projectQueryParams(query), tags, domains, clients), query);
+	}
+	for (const value of ['', '02', '-2', '2.0', '2e0', ' 2', '999', '9007199254740993', '2&client=2', '2&client=0']) {
+		const query = parseProjectQuery(new URLSearchParams(`client=${value}`), tags, domains, clients);
+		assert.deepEqual(query, { view: 'highlighted', tag: null, domain: null, client: null, sort: 'highlighted' });
+		assert.equal(projectQueryParams(query).toString(), '');
+	}
+	assert.equal(parseProjectQuery(new URLSearchParams('client=2'), tags, domains).client, null);
+});
+
+test('Gallery tags omit only trimmed case-insensitive Showreel and reject it as a query filter', () => {
+	const tags = Object.freeze([
+		{ id: 1, tag: 'Showreel' }, { id: 2, tag: '  sHoWrEeL\t' },
+		{ id: 3, tag: 'Showreels' }, { id: 4, tag: 'Film Showreel' }, { id: 5, tag: 'Film' }
+	]);
+	const visible = galleryTags(tags);
+	assert.deepEqual(visible, [tags[2], tags[3], tags[4]]);
+	assert.equal(visible[0], tags[2]);
+	assert.equal(tags.length, 5);
+	assert.deepEqual(galleryTags([]), []);
+	assert.equal(parseProjectQuery(new URLSearchParams('tag=1'), visible, []).tag, null);
+	assert.equal(parseProjectQuery(new URLSearchParams('tag=5'), visible, []).tag, 5);
+});
 test('Identity preserves all clients, deduplicates IDs, safely falls back for missing clients/logos and cue gaps', () => {
 	const a = client(1), b = client(2, { logo: 8 });
 	assert.deepEqual(projectIdentity(null), { label: 'SHOWREEL', projectSlug: null, clients: [] });

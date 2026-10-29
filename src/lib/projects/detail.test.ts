@@ -8,6 +8,8 @@ const project = (values: Partial<Project> = {}): Project => ({ id: 1, title: 'Fi
 test('safe homepage return path preserves validated catalogue query only', () => {
 	assert.equal(projectBackLink('/?view=all&tag=2&domain=3&sort=title&evil=x#projects', [{ id: 2 }], [{ id: 3 }]), '/?view=all&tag=2&domain=3&sort=title#projects');
 	assert.equal(projectBackLink('/?tag=99&sort=unknown', [], []), '/#projects');
+	assert.equal(projectBackLink('/?client=7&sort=title', [], [], [{ id: 7 }]), '/?view=all&client=7&sort=title#projects');
+	assert.equal(projectBackLink('/?client=8', [], [], [{ id: 7 }]), '/#projects');
 	for (const value of [null, '//evil.test', '/contact', 'https://evil.test/', '/\\evil.test', '/%2f%2fevil', '/?view=all\n']) assert.equal(projectBackLink(value, [], []), '/#projects');
 });
 test('typed fetch separates real missing from upstream failures, encodes slug once', async () => {

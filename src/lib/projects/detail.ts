@@ -20,12 +20,12 @@ export async function fetchProjectDetail(base: string, slug: string, request: (u
 }
 
 /** Only a root-relative homepage may restore catalogue state; no open redirects. */
-export function projectBackLink(value: string | null, tags: readonly Pick<Tag, 'id'>[], domains: readonly Pick<Domain, 'id'>[]): string {
+export function projectBackLink(value: string | null, tags: readonly Pick<Tag, 'id'>[], domains: readonly Pick<Domain, 'id'>[], clients: readonly Pick<Client, 'id'>[] = []): string {
 	if (!value || !/^\/(?:\?|#|$)/.test(value) || /[\\\x00-\x20]/.test(value)) return '/#projects';
 	try {
 		const url = new URL(value, 'https://wawefilms.com');
 		if (url.origin !== 'https://wawefilms.com' || url.pathname !== '/') return '/#projects';
-		const params = projectQueryParams(parseProjectQuery(url.searchParams, tags, domains)).toString();
+		const params = projectQueryParams(parseProjectQuery(url.searchParams, tags, domains, clients)).toString();
 		return `/${params ? `?${params}` : ''}#projects`;
 	} catch { return '/#projects'; }
 }

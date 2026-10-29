@@ -17,7 +17,7 @@
 	const id = $props.id();
 	let open = $state(false);
 	let bar: HTMLElement;
-	let trigger: HTMLButtonElement;
+	let trigger = $state<HTMLButtonElement>();
 	let failedLogos = $state<string[]>([]);
 	let reduced = $state(true);
 	onMount(() => {
@@ -64,7 +64,7 @@
 			</div>
 		{/if}
 		<button class="menu-trigger site-heading" bind:this={trigger} aria-expanded={open} aria-controls="{id}-menu" onclick={() => open = !open}>{open ? 'Close' : 'Menu'}</button>
-		<MenuPanel id="{id}-menu" {open} homepage={homepage || overlay} onclose={close} {onprojectsrequest} />
+		<MenuPanel id="{id}-menu" {open} anchor={trigger} homepage={homepage || overlay} onclose={close} {onprojectsrequest} />
 	</div>
 </header>
 
